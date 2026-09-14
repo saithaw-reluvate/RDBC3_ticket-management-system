@@ -5,8 +5,9 @@
 - `docs/ARCHITECTURE.md` is the approved Step 0 architecture.
 - `docs/DATABASE.md` is the approved Step 1 database design.
 - `docs/BACKEND.md` is the approved Step 2 backend design.
+- `docs/FRONTEND.md` is the approved Step 3 frontend design.
 - Precedence: brief > CLAUDE.md > ARCHITECTURE.md > DATABASE.md > BACKEND.md >
-  implementation.
+  FRONTEND.md > implementation.
 - Read the relevant design docs before any implementation step.
 
 ## Project Goal
@@ -262,8 +263,25 @@ Full design in `docs/BACKEND.md`. Rules that must not be violated:
   recorded by explicit service calls — never Django signals.
 - All errors use the single error envelope. Stack traces never cross the API boundary.
 
+## UI Rules
+Full design in `docs/FRONTEND.md`. Rules that must not be violated:
+- Poppins is the ONLY font family. Ticket references are made distinctive by weight
+  and letter-spacing, never by adding a second face.
+- Editorial record, not a SaaS dashboard: ledger rules instead of cards, sharp
+  corners, underlined form fields.
+- Status and priority are never carried by colour alone — always mark plus label.
+- Customer-facing screens must NEVER expose HTTP status codes or API error codes.
+- Customer responses carry no author, and customer events arrive already filtered by
+  the backend. Never invent an author, and never re-filter events on the client.
+- The submit response never carries the tracking link, so the receipt screen must
+  carry the trust: reference, the email echoed back, and a resend route.
+- The admin composer shows a persistent banner in BOTH modes; internal mode retints
+  the container and its button reads "Add internal note".
+- `/track/[token]` is a Server Component. Server-side fetches use the internal
+  origin (`http://backend:8000`), never the browser origin.
+
 ## Pending Decisions
-None open at Step 0, Step 1, or Step 2. Items deliberately deferred to later steps are listed in
+None open at Step 0, Step 1, Step 2, or Step 3. Items deliberately deferred to later steps are listed in
 `docs/ARCHITECTURE.md` §9.
 
 # Development Flow

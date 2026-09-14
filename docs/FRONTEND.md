@@ -60,6 +60,8 @@ the product actually does, which is what makes an emailed link feel permanent.
 | `--oxide` (High, error, accent) | `#A1382B` | `#E4917A` |
 | `--ochre` (In progress, internal) | `#8F6118` | `#E0B36B` |
 | `--moss` (Resolved, success) | `#3F5F3A` | `#93B989` |
+| `--internal-bg` (internal-note tint) | `rgb(143 97 24 / 0.07)` | `rgb(224 179 107 / 0.11)` |
+| `--sel-bg` (selected queue row) | `rgb(161 56 43 / 0.06)` | `rgb(228 145 122 / 0.10)` |
 
 Surface roles: `--page` is the ground; `--surface` carries rails, top bars and the
 composer; `--raised` carries inputs and selects; `--sunk` carries control strips and
@@ -127,9 +129,13 @@ side gets a persistent top bar plus a filter rail.
 
 | Breakpoint | Customer | Admin |
 |---|---|---|
-| ≥1140px | Single 700px document column | Three panes: 244px rail · 320px queue · detail |
-| 780–1139px | Same | Rail + detail; the middle queue column is hidden |
-| <780px | Single column, stacked name/email | Fully stacked; rail becomes a top block; queue rows drop the category and status columns |
+| ≥1141px | Single 700px document column | Three panes: 244px rail · 320px queue · detail |
+| 781–1140px | Same | Rail + detail; the middle queue column is hidden |
+| ≤780px | Single column, stacked name/email | Fully stacked; rail becomes a top block; queue rows drop the category and status columns |
+| ≤470px | Docket and ledger rows collapse to one column | — |
+
+Recovery screens (`/track/link` and the three token states) use a narrower 580px
+column than the 700px record column.
 
 Side gutter of at least 16px at every width, set once on the wrapper. Document column
 caps at 700px so running text stays near 65 characters. No horizontal body scroll at
@@ -284,6 +290,9 @@ Ordering covers `created_at`, `priority`, `status`.
 - **Customer events are pre-filtered** by the backend to `CREATED`, `STATUS_CHANGED`,
   `RESPONSE_ADDED`. Render whatever arrives; do not re-filter or assume more.
 - **CSRF:** send `X-CSRFToken` from the `csrftoken` cookie on every unsafe admin request.
+- **`GET /api/admin/auth/me/` returns `403` when logged out** — that is the normal
+  signed-out state, not an error to surface. It sets the `csrftoken` cookie either
+  way (`ensure_csrf_cookie`), so call it before rendering the login form.
 - **Server-side fetches must target the internal origin** (`http://backend:8000`). The
   Next.js `/api/*` rewrite applies only in the browser.
 - **Throttles to expect:** submit 5/hour, token lookup 120/hour, resend 3/hour.
