@@ -40,6 +40,19 @@ Settled during Step 1 planning:
 | 10 | **Database-level `CheckConstraint`s** for status/priority values, resolution consistency, and token expiry — not just Django validators. Directly serves the brief's data-integrity requirement. |
 | 11 | **Single Django app, `tickets`**, holding all six models. Cohesive at this size, avoids circular imports. |
 | 12 | **No `factory_boy`** — plain pytest fixtures, to avoid dependency creep. |
+| 13 | **`Ticket.category` — required at submission, admin re-assignable.** Seven incident-focused values as `TextChoices` + check constraint + index, matching the `status`/`priority` idiom (full list below). Rejected a separate `Category` table: it adds a join and a fixtures dependency for admin-editable values nobody asked for. Justified by the brief's "most common issues" analytics metric, which cannot be computed from free text. Feature requests are deliberately excluded — the brief scopes the system to incidences, and enhancements distort resolution-time analytics. |
+
+**`Ticket.category` — the seven approved values** (fixed, not admin-editable):
+
+| Value | Label |
+|---|---|
+| `ACCOUNT_ACCESS` | Login & account access |
+| `BILLING` | Billing & payments |
+| `BUG` | Something is broken |
+| `PERFORMANCE` | Slow or unavailable |
+| `DATA` | Incorrect or missing data |
+| `SECURITY` | Security concern |
+| `OTHER` | Something else |
 
 ---
 
@@ -64,6 +77,7 @@ ever filed from one address.
 | `reporter_name` | Char(150) | as submitted |
 | `subject` | Char(200) | required |
 | `description` | Text | required |
+| `category` | Char(20) | choices, **required** — no model default, so the value is always explicit; see §2 Decision 13 for the seven values |
 | `status` | Char(20) | choices, default `OPEN` |
 | `priority` | Char(10) | choices, default `MEDIUM` |
 | `created_at` / `updated_at` | DateTime | auto |
@@ -110,7 +124,8 @@ Customer plane filters `is_internal=False`. Admin plane sees all.
 | `metadata` | JSON | nullable, small extras only |
 | `created_at` | DateTime | auto |
 
-**Event types:** `CREATED`, `STATUS_CHANGED`, `PRIORITY_CHANGED`, `RESPONSE_ADDED`,
+**Event types:** `CREATED`, `STATUS_CHANGED`, `PRIORITY_CHANGED`, `CATEGORY_CHANGED`,
+`RESPONSE_ADDED`,
 `ATTACHMENT_ADDED`, `TOKEN_ISSUED`, `TOKEN_REVOKED`, `EMAIL_SENT`, `EMAIL_FAILED`.
 
 **Customer-visible subset:** `CREATED`, `STATUS_CHANGED`, `RESPONSE_ADDED`. The rest
@@ -161,6 +176,7 @@ every staff reference is `SET_NULL` so audit rows survive staff removal.
 - `TicketAccessToken.token_hash` unique.
 - Check: `status` in the three allowed values.
 - Check: `priority` in the three allowed values.
+- Check: `category` in the seven allowed values.
 - Check: `resolved_at IS NOT NULL` **iff** `status = 'RESOLVED'`.
 - Check: `expires_at > created_at` on tokens.
 - Check: `size_bytes > 0` on attachments.
@@ -178,6 +194,7 @@ Each index is justified by a query the application actually runs.
 | `Ticket.reference` (unique) | reference lookup from emails |
 | `Ticket (status, -created_at)` | admin dashboard default listing |
 | `Ticket.priority` | admin filtering |
+| `Ticket.category` | admin filtering; "most common issues" analytics |
 | `TicketEvent (ticket, created_at)` | history timeline |
 | `Response (ticket, created_at)` | conversation thread |
 | Foreign keys | indexed automatically by Django |

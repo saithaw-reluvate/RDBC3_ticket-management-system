@@ -231,6 +231,11 @@ wording, because Jest cannot drive a browser. Document this in the final README.
 Full design in `docs/DATABASE.md`. Rules that must not be violated:
 - `Ticket.reference` (`TKT-XXXXXXXX`) is DISPLAY ONLY. Never authentication.
 - Statuses are exactly `OPEN`, `IN_PROGRESS`, `RESOLVED`. Do not add `CLOSED`.
+- `Ticket.category` is required at submission and admin-reassignable. The category
+  set is fixed `TextChoices`, never an editable database table. The seven approved
+  values (`ACCOUNT_ACCESS`, `BILLING`, `BUG`, `PERFORMANCE`, `DATA`, `SECURITY`,
+  `OTHER`) are enumerated with their labels in `docs/DATABASE.md` §2 Decision 13 —
+  that table is the source of truth, do not infer values elsewhere.
 - The customer plane must filter `Response.is_internal=False`.
 - Deletion policy: `Client → Ticket` is `PROTECT`; Ticket children `CASCADE`; staff
   references `SET_NULL` so audit rows survive staff removal.

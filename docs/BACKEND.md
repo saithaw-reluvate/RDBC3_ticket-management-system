@@ -60,12 +60,17 @@ ATTACHMENT_MAX_COUNT=5
 
 **`POST /api/tickets/`** — `multipart/form-data`
 
-Request: `reporter_name`, `email`, `subject`, `description`, `attachments[]` (optional)
+Request: `reporter_name`, `email`, `subject`, `category`, `description`,
+`attachments[]` (optional)
+
+`category` is **required**. `OTHER` is the escape hatch, so a required field never
+blocks a submission. The seven allowed values are enumerated in `docs/DATABASE.md`
+§2 Decision 13 — that table is the source of truth.
 
 Response `201`:
 ```json
-{ "reference": "TKT-A7K2M9P4", "subject": "...", "status": "OPEN",
-  "priority": "MEDIUM", "created_at": "..." }
+{ "reference": "TKT-A7K2M9P4", "subject": "...", "category": "BUG",
+  "status": "OPEN", "priority": "MEDIUM", "created_at": "..." }
 ```
 
 No token, no link — by Decision 1.
@@ -93,7 +98,8 @@ token resolution:
 
 ```json
 { "reference": "...", "subject": "...", "description": "...",
-  "reporter_name": "...", "status": "IN_PROGRESS", "priority": "HIGH",
+  "reporter_name": "...", "category": "BUG", "category_display": "Something is broken",
+  "status": "IN_PROGRESS", "priority": "HIGH",
   "created_at": "...", "resolved_at": null,
   "responses":   [ { "message": "...", "created_at": "..." } ],
   "events":      [ { "event_type": "STATUS_CHANGED", "old_value": "OPEN",
@@ -117,9 +123,9 @@ not belong to the token's ticket.
 | `POST` | `/api/admin/auth/login/` | Session login |
 | `POST` | `/api/admin/auth/logout/` | End session |
 | `GET` | `/api/admin/auth/me/` | Current user; `@ensure_csrf_cookie` so the SPA receives `csrftoken` on boot |
-| `GET` | `/api/admin/tickets/` | List — filter `status`, `priority`; `search`; `ordering`; paginated |
+| `GET` | `/api/admin/tickets/` | List — filter `status`, `priority`, `category`; `search`; `ordering`; paginated |
 | `GET` | `/api/admin/tickets/<reference>/` | Detail — **all** responses including internal, **all** events |
-| `PATCH` | `/api/admin/tickets/<reference>/` | Update `status` and/or `priority` |
+| `PATCH` | `/api/admin/tickets/<reference>/` | Update `status`, `priority`, and/or `category` |
 | `POST` | `/api/admin/tickets/<reference>/responses/` | Add response (`message`, `is_internal`) |
 | `POST` | `/api/admin/tickets/<reference>/resend-link/` | Mint a new token and email it |
 | `POST` | `/api/admin/tickets/<reference>/revoke-links/` | Revoke all active tokens |
@@ -203,7 +209,7 @@ internal ID — **never a token, raw or hashed**.
 
 | Level | Events |
 |---|---|
-| `info` | Ticket created; status changed; priority changed; response added; token issued; token revoked; email sent |
+| `info` | Ticket created; status changed; priority changed; category changed; response added; token issued; token revoked; email sent |
 | `warning` | Attachment rejected (type/size/count); token lookup failed; throttle exceeded |
 | `error` | Email send failed |
 | `exception` | Any unhandled exception reaching the DRF handler |
