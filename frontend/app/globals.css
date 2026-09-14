@@ -1,0 +1,158 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens — docs/FRONTEND.md §2.2. Three-state pattern: full palette on
+   bare :root (light default), then system dark mode, then explicit override. */
+:root {
+  --page: #faf8f4;
+  --surface: #fffdf9;
+  --raised: #ffffff;
+  --sunk: #f1ede5;
+  --ink: #14110e;
+  --muted: #645d52;
+  --faint: #8a8276;
+  --rule: rgb(20 17 14 / 0.13);
+  --rule-strong: rgb(20 17 14 / 0.28);
+  --oxide: #a1382b;
+  --ochre: #8f6118;
+  --moss: #3f5f3a;
+  --internal-bg: rgb(143 97 24 / 0.07);
+  --sel-bg: rgb(161 56 43 / 0.06);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #1f1d1a;
+    --surface: #272420;
+    --raised: #2f2b26;
+    --sunk: #1a1816;
+    --ink: #f2ede5;
+    --muted: #b3aa9d;
+    --faint: #938a7e;
+    --rule: rgb(242 237 229 / 0.12);
+    --rule-strong: rgb(242 237 229 / 0.26);
+    --oxide: #e4917a;
+    --ochre: #e0b36b;
+    --moss: #93b989;
+    --internal-bg: rgb(224 179 107 / 0.11);
+    --sel-bg: rgb(228 145 122 / 0.1);
+  }
+}
+
+:root[data-theme="dark"] {
+  --page: #1f1d1a;
+  --surface: #272420;
+  --raised: #2f2b26;
+  --sunk: #1a1816;
+  --ink: #f2ede5;
+  --muted: #b3aa9d;
+  --faint: #938a7e;
+  --rule: rgb(242 237 229 / 0.12);
+  --rule-strong: rgb(242 237 229 / 0.26);
+  --oxide: #e4917a;
+  --ochre: #e0b36b;
+  --moss: #93b989;
+  --internal-bg: rgb(224 179 107 / 0.11);
+  --sel-bg: rgb(228 145 122 / 0.1);
+}
+
+* {
+  border-color: var(--rule);
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font-poppins), sans-serif;
+  font-weight: 300;
+}
+
+/* Ledger rule — a hairline divider used instead of card borders/shadows. */
+.rule {
+  border-top: 1px solid var(--rule);
+}
+
+.rule-strong {
+  border-top: 1px solid var(--rule-strong);
+}
+
+/* Ticket reference typography — weight + tracking only, never a second font. */
+.reference-code {
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  font-variant-numeric: tabular-nums;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.eyebrow {
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Visible focus ring on every interactive element — docs/FRONTEND.md §9. */
+:focus-visible {
+  outline: 2px solid var(--oxide);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@keyframes seal-settle {
+  0% {
+    transform: scale(0.85) rotate(-8deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.05) rotate(2deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.seal-animate {
+  animation: seal-settle 320ms ease-out;
+}
+
+@keyframes status-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.status-pulse {
+  animation: status-pulse 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seal-animate,
+  .status-pulse {
+    animation: none;
+  }
+}
