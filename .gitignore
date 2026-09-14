@@ -21,6 +21,9 @@ local_settings.py
 htmlcov/
 coverage.xml
 
+# Postman fixtures generated on demand (see fixtures/make_oversized.sh)
+docs/postman/fixtures/oversized.pdf
+
 # Node / Next.js
 frontend/node_modules/
 frontend/.next/

@@ -227,6 +227,12 @@ LOGGING = {
             "propagate": False,
             "filters": ["redact_token_path"],
         },
+        "django.server": {
+            "handlers": ["console", "application_file", "error_file"],
+            "level": "INFO",
+            "propagate": False,
+            "filters": ["redact_token_path"],
+        },
         "tickets": {
             "handlers": ["console", "application_file", "error_file"],
             "level": "INFO",

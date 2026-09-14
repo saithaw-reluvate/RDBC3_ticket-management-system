@@ -1,0 +1,1748 @@
+{
+  "info": {
+    "_postman_id": "16d9a371-4668-4016-83ce-a18117bd5e8b",
+    "name": "Ticket System API (Step 2)",
+    "description": "Exercises all three trust planes end-to-end against a running backend + Mailpit. Requests are order-dependent (run top-to-bottom / use Collection Runner or newman, not individual requests). Expired-token behavior is covered only by the pytest suite (cannot be produced live in 90 days via the API).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Public",
+      "item": [
+        {
+          "name": "Create Ticket - Missing Required Field",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tickets/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tickets",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "reporter_name",
+                  "value": "Jane Postman",
+                  "type": "text"
+                },
+                {
+                  "key": "subject",
+                  "value": "Missing email test",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "This request omits the email field.",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "  const body = pm.response.json();",
+                  "  pm.test('error code is validation_error', () => pm.expect(body.error.code).to.eql('validation_error'));",
+                  "  pm.test('details mentions email', () => pm.expect(body.error.details).to.have.property('email'));",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Ticket - Invalid Email",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tickets/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tickets",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "reporter_name",
+                  "value": "Jane Postman",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "not-an-email",
+                  "type": "text"
+                },
+                {
+                  "key": "subject",
+                  "value": "Invalid email test",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "This request has a malformed email.",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "  pm.test('error code is validation_error', () => pm.expect(pm.response.json().error.code).to.eql('validation_error'));",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Ticket - Oversized Attachment",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tickets/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tickets",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "reporter_name",
+                  "value": "Jane Postman",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "jane.postman@example.com",
+                  "type": "text"
+                },
+                {
+                  "key": "subject",
+                  "value": "Oversized attachment test",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "This request attaches a file over the 5MB limit.",
+                  "type": "text"
+                },
+                {
+                  "key": "attachments",
+                  "type": "file",
+                  "src": "fixtures/oversized.pdf"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  // Requires fixtures/oversized.pdf \u2014 regenerate with fixtures/make_oversized.sh",
+                  "  // if missing (it is gitignored, not committed).",
+                  "})();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "  const body = pm.response.json();",
+                  "  pm.test('error code is validation_error', () => pm.expect(body.error.code).to.eql('validation_error'));",
+                  "  pm.test('mentions size limit', () => pm.expect(JSON.stringify(body.error.details)).to.match(/MB size limit/));",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Ticket - Success",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tickets/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tickets",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "reporter_name",
+                  "value": "Jane Postman",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "jane.postman@example.com",
+                  "type": "text"
+                },
+                {
+                  "key": "subject",
+                  "value": "Cannot log in to the portal",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Getting a 500 error since this morning when I try to sign in.",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "  const body = pm.response.json();",
+                  "  pm.test('has reference in TKT- format', () => pm.expect(body.reference).to.match(/^TKT-[A-Z0-9]{8}$/));",
+                  "  pm.test('status is OPEN', () => pm.expect(body.status).to.eql('OPEN'));",
+                  "  pm.test('priority is MEDIUM', () => pm.expect(body.priority).to.eql('MEDIUM'));",
+                  "  pm.test('never returns a token or link (Decision 1)', () => {",
+                  "    const raw = JSON.stringify(body);",
+                  "    pm.expect(raw).to.not.match(/token/i);",
+                  "    pm.expect(raw).to.not.match(/track\\//);",
+                  "  });",
+                  "  pm.environment.set('reference', body.reference);",
+                  "  pm.environment.set('clientEmail', 'jane.postman@example.com');",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Ticket - Success (with attachment)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tickets/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tickets",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "reporter_name",
+                  "value": "Jane Postman",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "jane.postman@example.com",
+                  "type": "text"
+                },
+                {
+                  "key": "subject",
+                  "value": "Error screenshot attached",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "See the attached screenshot of the error.",
+                  "type": "text"
+                },
+                {
+                  "key": "attachments",
+                  "type": "file",
+                  "src": "fixtures/sample.pdf"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "  const body = pm.response.json();",
+                  "  pm.environment.set('reference2', body.reference);",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Ticket - Throttle Trip",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tickets/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tickets",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "reporter_name",
+                  "value": "Throttle Filler",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "throttle@example.com",
+                  "type": "text"
+                },
+                {
+                  "key": "subject",
+                  "value": "This is request #6 in this run",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "The public submission throttle is 5/hour; this is the 6th call.",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  // This is deliberately the 6th POST /api/tickets/ call in this collection run.",
+                  "  // DEFAULT_THROTTLE_RATES['ticket_create'] is 5/hour, so this one must be rejected.",
+                  "})();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 429 (throttled)', () => pm.response.to.have.status(429));",
+                  "  pm.test('error code is throttled', () => pm.expect(pm.response.json().error.code).to.eql('throttled'));",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resend Link - Known Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tickets/resend-link/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tickets",
+                "resend-link",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"{{clientEmail}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 202', () => pm.response.to.have.status(202));",
+                  "  pm.environment.set('resendKnownBody', pm.response.text());",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resend Link - Unknown Email (constant response)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tickets/resend-link/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tickets",
+                "resend-link",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"nobody-registered@example.com\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 202', () => pm.response.to.have.status(202));",
+                  "  pm.test('response body is identical for known and unknown addresses', () => {",
+                  "    pm.expect(pm.response.text()).to.eql(pm.environment.get('resendKnownBody'));",
+                  "  });",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Customer",
+      "item": [
+        {
+          "name": "Mailpit - Find Message for Ticket A",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mailpitUrl}}/api/v1/messages?limit=50",
+              "host": [
+                "{{mailpitUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "messages?limit=50"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  const data = pm.response.json();",
+                  "  const refValue = pm.environment.get('reference');",
+                  "  const match = data.messages.find(m => m.Subject.includes('[' + refValue + ']') && m.Subject.includes('received your ticket'));",
+                  "  pm.test('found a creation email for the ticket', () => pm.expect(match).to.not.be.undefined);",
+                  "  pm.environment.set('mailpitMessageIdA', match.ID);",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mailpit - Fetch Message for Ticket A",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mailpitUrl}}/api/v1/message/{{mailpitMessageIdA}}",
+              "host": [
+                "{{mailpitUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "message",
+                "{{mailpitMessageIdA}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  const data = pm.response.json();",
+                  "  const match = data.Text.match(/\\/track\\/([A-Za-z0-9_-]+)\\//);",
+                  "  pm.test('email body contains a tracking link', () => pm.expect(match).to.not.be.null);",
+                  "  pm.environment.set('trackingTokenA', match[1]);",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mailpit - Find Message for Ticket B",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mailpitUrl}}/api/v1/messages?limit=50",
+              "host": [
+                "{{mailpitUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "messages?limit=50"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  const data = pm.response.json();",
+                  "  const refValue = pm.environment.get('reference2');",
+                  "  const match = data.messages.find(m => m.Subject.includes('[' + refValue + ']') && m.Subject.includes('received your ticket'));",
+                  "  pm.test('found a creation email for the ticket', () => pm.expect(match).to.not.be.undefined);",
+                  "  pm.environment.set('mailpitMessageIdB', match.ID);",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mailpit - Fetch Message for Ticket B",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mailpitUrl}}/api/v1/message/{{mailpitMessageIdB}}",
+              "host": [
+                "{{mailpitUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "message",
+                "{{mailpitMessageIdB}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  const data = pm.response.json();",
+                  "  const match = data.Text.match(/\\/track\\/([A-Za-z0-9_-]+)\\//);",
+                  "  pm.test('email body contains a tracking link', () => pm.expect(match).to.not.be.null);",
+                  "  pm.environment.set('trackingTokenB', match[1]);",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Track Ticket B - Valid Token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/track/{{trackingTokenB}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "track",
+                "{{trackingTokenB}}",
+                ""
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "  const body = pm.response.json();",
+                  "  pm.test('reference matches ticket B', () => pm.expect(body.reference).to.eql(pm.environment.get('reference2')));",
+                  "  pm.test('has one attachment', () => pm.expect(body.attachments.length).to.eql(1));",
+                  "  pm.test('responses never expose author', () => {",
+                  "    body.responses.forEach(r => pm.expect(r).to.not.have.property('author'));",
+                  "  });",
+                  "  pm.environment.set('attachmentId', body.attachments[0].id);",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Download Attachment (Ticket B)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/track/{{trackingTokenB}}/attachments/{{attachmentId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "track",
+                "{{trackingTokenB}}",
+                "attachments",
+                "{{attachmentId}}",
+                ""
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "  pm.test('nosniff header present', () => pm.expect(pm.response.headers.get('X-Content-Type-Options')).to.eql('nosniff'));",
+                  "  pm.test('forces download', () => pm.expect(pm.response.headers.get('Content-Disposition')).to.include('attachment'));",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Track - Invalid Token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/track/this-token-does-not-exist-at-all/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "track",
+                "this-token-does-not-exist-at-all",
+                ""
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 404', () => pm.response.to.have.status(404));",
+                  "  pm.test('error code is invalid_token', () => pm.expect(pm.response.json().error.code).to.eql('invalid_token'));",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Download Attachment - Wrong Ticket's Token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/track/{{trackingTokenA}}/attachments/{{attachmentId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "track",
+                "{{trackingTokenA}}",
+                "attachments",
+                "{{attachmentId}}",
+                ""
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 404 (attachment belongs to a different ticket)', () => pm.response.to.have.status(404));",
+                  "  pm.test('error code is not_found', () => pm.expect(pm.response.json().error.code).to.eql('not_found'));",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Prime CSRF Cookie (Me, unauthenticated)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/auth/me/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "auth",
+                "me",
+                ""
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 403 (not authenticated)', () => pm.response.to.have.status(403));",
+                  "  pm.test('error code is permission_denied', () => pm.expect(pm.response.json().error.code).to.eql('permission_denied'));",
+                  "  const csrf = pm.cookies.get('csrftoken');",
+                  "  pm.test('csrftoken cookie was set', () => pm.expect(csrf).to.not.be.undefined);",
+                  "  pm.environment.set('csrfToken', csrf);",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unauthorized Admin List (edge case)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/tickets/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "tickets",
+                ""
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 403, never 404', () => pm.response.to.have.status(403));",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login - Wrong Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/auth/login/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "auth",
+                "login",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"{{adminUsername}}\", \"password\": \"wrong-password\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 403', () => pm.response.to.have.status(403));",
+                  "  pm.test('error code is permission_denied', () => pm.expect(pm.response.json().error.code).to.eql('permission_denied'));",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login - Success",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/auth/login/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "auth",
+                "login",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"{{adminUsername}}\", \"password\": \"{{adminPassword}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "  pm.test('is_staff is true', () => pm.expect(pm.response.json().is_staff).to.eql(true));",
+                  "  // Django's login() calls rotate_token() to prevent CSRF-token fixation,",
+                  "  // so the cookie captured before login is now stale \u2014 re-capture it.",
+                  "  pm.environment.set('csrfToken', pm.cookies.get('csrftoken'));",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me (after login)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/auth/me/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "auth",
+                "me",
+                ""
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "  pm.test('username matches', () => pm.expect(pm.response.json().username).to.eql(pm.environment.get('adminUsername')));",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Missing CSRF Token (edge case)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/tickets/{{reference}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "tickets",
+                "{{reference}}",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"priority\": \"HIGH\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 403 (CSRF failure)', () => pm.response.to.have.status(403));",
+                  "  pm.test('still returns the uniform JSON envelope, not HTML', () => {",
+                  "    pm.expect(pm.response.json().error.code).to.eql('permission_denied');",
+                  "  });",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Tickets",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/tickets/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "tickets",
+                ""
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "  const body = pm.response.json();",
+                  "  const refs = body.results.map(t => t.reference);",
+                  "  pm.test('includes both tickets created in this run', () => {",
+                  "    pm.expect(refs).to.include(pm.environment.get('reference'));",
+                  "    pm.expect(refs).to.include(pm.environment.get('reference2'));",
+                  "  });",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Tickets - Filter by Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/tickets/?status=OPEN",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "tickets",
+                "?status=OPEN"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "  const body = pm.response.json();",
+                  "  pm.test('every result is OPEN', () => body.results.forEach(t => pm.expect(t.status).to.eql('OPEN')));",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Tickets - Search by Reference",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/tickets/?search={{reference}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "tickets",
+                "?search={{reference}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "  const body = pm.response.json();",
+                  "  pm.test('exactly one match', () => pm.expect(body.results.length).to.eql(1));",
+                  "  pm.test('matches the expected reference', () => pm.expect(body.results[0].reference).to.eql(pm.environment.get('reference')));",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ticket Detail - Keyed on Reference",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/tickets/{{reference}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "tickets",
+                "{{reference}}",
+                ""
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "  pm.test('reference matches', () => pm.expect(pm.response.json().reference).to.eql(pm.environment.get('reference')));",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ticket Detail - Numeric PK is Never Valid",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/tickets/1/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "tickets",
+                "1",
+                ""
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 404 (pk is not a valid lookup)', () => pm.response.to.have.status(404));",
+                  "  pm.test('error code is not_found', () => pm.expect(pm.response.json().error.code).to.eql('not_found'));",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Patch Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/tickets/{{reference}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "tickets",
+                "{{reference}}",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"status\": \"IN_PROGRESS\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "  pm.test('status updated', () => pm.expect(pm.response.json().status).to.eql('IN_PROGRESS'));",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Patch Priority",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/tickets/{{reference}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "tickets",
+                "{{reference}}",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"priority\": \"HIGH\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "  pm.test('priority updated', () => pm.expect(pm.response.json().priority).to.eql('HIGH'));",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Patch - Invalid Status Rejected",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/tickets/{{reference}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "tickets",
+                "{{reference}}",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"status\": \"CLOSED\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "  pm.test('error code is validation_error', () => pm.expect(pm.response.json().error.code).to.eql('validation_error'));",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add Public Response",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/tickets/{{reference}}/responses/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "tickets",
+                "{{reference}}",
+                "responses",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"message\": \"Thanks for reaching out \\u2014 we are looking into this now.\", \"is_internal\": false}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "  pm.test('is_internal is false', () => pm.expect(pm.response.json().is_internal).to.eql(false));",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add Internal Response",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/tickets/{{reference}}/responses/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "tickets",
+                "{{reference}}",
+                "responses",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"message\": \"Escalating to the infra team.\", \"is_internal\": true}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "  pm.test('is_internal is true', () => pm.expect(pm.response.json().is_internal).to.eql(true));",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resend Link (admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/tickets/{{reference}}/resend-link/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "tickets",
+                "{{reference}}",
+                "resend-link",
+                ""
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Download Attachment (admin route)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/tickets/{{reference2}}/attachments/{{attachmentId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "tickets",
+                "{{reference2}}",
+                "attachments",
+                "{{attachmentId}}",
+                ""
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "  pm.test('nosniff header present', () => pm.expect(pm.response.headers.get('X-Content-Type-Options')).to.eql('nosniff'));",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Revoke Links",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/tickets/{{reference}}/revoke-links/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "tickets",
+                "{{reference}}",
+                "revoke-links",
+                ""
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "  pm.test('revoked at least one token', () => pm.expect(pm.response.json().revoked).to.be.above(0));",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/auth/logout/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "auth",
+                "logout",
+                ""
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 204', () => pm.response.to.have.status(204));",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List After Logout (session is gone)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/tickets/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "tickets",
+                ""
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 403', () => pm.response.to.have.status(403));",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Post-Admin Verification",
+      "item": [
+        {
+          "name": "Track - Revoked Token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/track/{{trackingTokenA}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "track",
+                "{{trackingTokenA}}",
+                ""
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 410', () => pm.response.to.have.status(410));",
+                  "  pm.test('error code is revoked_token', () => pm.expect(pm.response.json().error.code).to.eql('revoked_token'));",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
