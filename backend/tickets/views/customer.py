@@ -14,6 +14,10 @@ class TicketTrackView(APIView):
     """GET /api/track/<token>/ — one composite response: status, history,
     responses, attachments. Read-only, scoped to the token's own ticket."""
 
+    # Customer plane identity comes solely from the URL token, never from a
+    # Django session — see TicketCreateView in views/public.py for why
+    # SessionAuthentication must not run on trust planes that don't use it.
+    authentication_classes = []
     permission_classes = [AllowAny]
     throttle_classes = [TokenLookupThrottle]
 
@@ -26,6 +30,7 @@ class AttachmentDownloadView(APIView):
     """GET /api/track/<token>/attachments/<id>/ — 404 if the attachment does
     not belong to the token's own ticket."""
 
+    authentication_classes = []
     permission_classes = [AllowAny]
     throttle_classes = [TokenLookupThrottle]
 

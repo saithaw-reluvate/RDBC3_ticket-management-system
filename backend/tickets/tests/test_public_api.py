@@ -2,6 +2,7 @@ import pytest
 from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
+from rest_framework.test import APIClient
 
 from tickets.models import Ticket
 
@@ -167,3 +168,42 @@ def test_resend_link_throttled_after_limit(api_client):
 
     response = api_client.post(url, {"email": "x@example.com"}, format="json")
     assert response.status_code == 429
+
+
+# --- public endpoints stay anonymous regardless of an existing admin session ---
+#
+# Regression for a real bug: DRF's SessionAuthentication enforces CSRF for any
+# request that resolves to an *active* session user, independent of the view's
+# permission_classes. With the global default authentication classes, a browser
+# holding an unrelated admin session cookie got a CSRF 403 submitting a ticket —
+# it worked in a private window only because no session cookie was sent at all.
+# These use enforce_csrf_checks=True (matching test_admin_api.py's CSRF test) and
+# deliberately send no CSRF token, so a regression here reproduces the bug as a 403.
+
+
+def test_submit_ticket_succeeds_with_existing_admin_session(staff_user):
+    client = APIClient(enforce_csrf_checks=True)
+    client.force_login(staff_user)
+
+    url = reverse("ticket-create")
+    payload = {
+        "reporter_name": "Jane Customer",
+        "email": "jane@example.com",
+        "subject": "Cannot log in",
+        "category": "ACCOUNT_ACCESS",
+        "description": "Getting a 500 error since this morning.",
+    }
+    response = client.post(url, payload, format="multipart")
+
+    assert response.status_code == 201
+    assert response.json()["reference"].startswith("TKT-")
+
+
+def test_resend_link_succeeds_with_existing_admin_session(staff_user):
+    client = APIClient(enforce_csrf_checks=True)
+    client.force_login(staff_user)
+
+    url = reverse("ticket-resend-link")
+    response = client.post(url, {"email": "someone@example.com"}, format="json")
+
+    assert response.status_code == 202

@@ -1,6 +1,7 @@
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
+from rest_framework.test import APIClient
 
 from tickets.constants import ActorType, Category, EventType, IssuedFor
 from tickets.models import Attachment, Response, Ticket, TicketAccessToken
@@ -32,6 +33,20 @@ def test_track_invalid_token_returns_404_envelope(api_client):
     response = api_client.get(reverse("ticket-track", args=["not-a-real-token"]))
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "invalid_token"
+
+
+def test_track_succeeds_with_existing_admin_session(staff_user, ticket):
+    # Customer plane identity comes solely from the URL token — see the
+    # matching regression tests in test_public_api.py. An active admin
+    # session must never affect this endpoint's behaviour.
+    raw = _issue(ticket)
+    client = APIClient(enforce_csrf_checks=True)
+    client.force_login(staff_user)
+
+    response = client.get(reverse("ticket-track", args=[raw]))
+
+    assert response.status_code == 200
+    assert response.json()["reference"] == ticket.reference
 
 
 def test_track_expired_token_returns_410(api_client, ticket):

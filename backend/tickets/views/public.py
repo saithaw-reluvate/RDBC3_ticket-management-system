@@ -13,6 +13,13 @@ class TicketCreateView(APIView):
     """POST /api/tickets/ — public, anonymous, throttled. Returns `reference`
     only; the tracking link is delivered by email (Decision 1)."""
 
+    # No SessionAuthentication: DRF's SessionAuthentication enforces CSRF
+    # for ANY request that resolves to an active session user, regardless of
+    # permission_classes — so with the global default authentication classes,
+    # a browser holding an unrelated admin session cookie would get a CSRF
+    # 403 on this public, anonymous endpoint. This view never uses request.user
+    # for anything, so it must not run session-based authentication at all.
+    authentication_classes = []
     permission_classes = [AllowAny]
     parser_classes = [MultiPartParser, FormParser]
     throttle_classes = [TicketCreateThrottle]
@@ -32,6 +39,9 @@ class ResendLinkView(APIView):
     """POST /api/tickets/resend-link/ — constant response regardless of
     whether the address is known (Decision 2), throttled against enumeration."""
 
+    # See TicketCreateView above: must stay usable regardless of any
+    # existing admin session, so no SessionAuthentication/CSRF here.
+    authentication_classes = []
     permission_classes = [AllowAny]
     throttle_classes = [ResendLinkThrottle]
 
