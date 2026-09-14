@@ -6,8 +6,11 @@
 - `docs/DATABASE.md` is the approved Step 1 database design.
 - `docs/BACKEND.md` is the approved Step 2 backend design.
 - `docs/FRONTEND.md` is the approved Step 3 frontend design.
+- `docs/INTEGRATION.md` is the Step 4 integration record (what was connected,
+  verified, and fixed — see its own note on why it isn't a pre-approved plan
+  like the others).
 - Precedence: brief > CLAUDE.md > ARCHITECTURE.md > DATABASE.md > BACKEND.md >
-  FRONTEND.md > implementation.
+  FRONTEND.md > INTEGRATION.md > implementation.
 - Read the relevant design docs before any implementation step.
 
 ## Project Goal
@@ -281,7 +284,7 @@ Full design in `docs/FRONTEND.md`. Rules that must not be violated:
   origin (`http://backend:8000`), never the browser origin.
 
 ## Pending Decisions
-None open at Step 0, Step 1, Step 2, or Step 3. Items deliberately deferred to later steps are listed in
+None open at Step 0, Step 1, Step 2, Step 3, or Step 4. Items deliberately deferred to later steps are listed in
 `docs/ARCHITECTURE.md` §9.
 
 # Development Flow

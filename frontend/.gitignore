@@ -9,6 +9,11 @@
 # testing
 /coverage
 
+# playwright (Step 4 E2E)
+/playwright-report/
+/test-results/
+/e2e/.fixtures.json
+
 # next.js
 /.next/
 /out/
