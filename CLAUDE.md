@@ -4,8 +4,10 @@
 - `docs/RBDC_Ex_3.pdf` is the original project brief.
 - `docs/ARCHITECTURE.md` is the approved Step 0 architecture.
 - `docs/DATABASE.md` is the approved Step 1 database design.
-- Precedence: brief > CLAUDE.md > ARCHITECTURE.md > DATABASE.md > implementation.
-- Read `docs/ARCHITECTURE.md` and `docs/DATABASE.md` before any implementation step.
+- `docs/BACKEND.md` is the approved Step 2 backend design.
+- Precedence: brief > CLAUDE.md > ARCHITECTURE.md > DATABASE.md > BACKEND.md >
+  implementation.
+- Read the relevant design docs before any implementation step.
 
 ## Project Goal
 Build a Ticket Management System where customers can submit incident tickets without creating an account.
@@ -237,8 +239,26 @@ Full design in `docs/DATABASE.md`. Rules that must not be violated:
 - All models live in a single `tickets` app.
 - Run tests against real PostgreSQL, never SQLite — constraint behaviour differs.
 
+## API Rules
+Full design in `docs/BACKEND.md`. Rules that must not be violated:
+- Admin routes key on `Ticket.reference`, never the primary key.
+- The customer plane is read-only. It must filter `Response.is_internal=False` and the
+  customer-visible event whitelist, and must never expose response authors.
+- The submit response never contains the tracking link. Email is the only delivery
+  path for links.
+- Every email needing a link mints a fresh token.
+- Email failures log and record an `EMAIL_FAILED` event, but NEVER fail the request.
+- Never log a raw or hashed token, in any form, at any level.
+- Token failures are distinguished: invalid (404), expired (410), revoked (410).
+- Attachments are served only through an access-checked view, with
+  `Content-Disposition: attachment` and `X-Content-Type-Options: nosniff`. SVG is
+  never an allowed upload type.
+- Views stay thin. State changes go through `tickets/services/`, and history is
+  recorded by explicit service calls — never Django signals.
+- All errors use the single error envelope. Stack traces never cross the API boundary.
+
 ## Pending Decisions
-None open at Step 0 or Step 1. Items deliberately deferred to later steps are listed in
+None open at Step 0, Step 1, or Step 2. Items deliberately deferred to later steps are listed in
 `docs/ARCHITECTURE.md` §9.
 
 # Development Flow
