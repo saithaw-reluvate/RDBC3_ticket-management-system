@@ -32,8 +32,8 @@ class AttachmentInline(admin.TabularInline):
 
 @admin.register(Ticket)
 class TicketAdmin(admin.ModelAdmin):
-    list_display = ("reference", "subject", "status", "priority", "client", "created_at")
-    list_filter = ("status", "priority")
+    list_display = ("reference", "subject", "category", "status", "priority", "client", "created_at")
+    list_filter = ("status", "priority", "category")
     search_fields = ("reference", "subject", "reporter_name", "client__email")
     readonly_fields = ("reference", "created_at", "updated_at")
     inlines = [ResponseInline, TicketEventInline, AttachmentInline]

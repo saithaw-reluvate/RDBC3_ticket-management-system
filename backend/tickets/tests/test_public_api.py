@@ -14,6 +14,7 @@ def test_submit_ticket_success(api_client):
         "reporter_name": "Jane Customer",
         "email": "jane@example.com",
         "subject": "Cannot log in",
+        "category": "ACCOUNT_ACCESS",
         "description": "Getting a 500 error since this morning.",
     }
     response = api_client.post(url, payload, format="multipart")
@@ -21,6 +22,7 @@ def test_submit_ticket_success(api_client):
     assert response.status_code == 201
     data = response.json()
     assert data["reference"].startswith("TKT-")
+    assert data["category"] == "ACCOUNT_ACCESS"
     assert data["status"] == "OPEN"
     assert data["priority"] == "MEDIUM"
     # Decision 1: never return the tracking link/token in the response.
@@ -34,6 +36,7 @@ def test_submit_ticket_with_attachment(api_client):
         "reporter_name": "Jane",
         "email": "jane@example.com",
         "subject": "Broken",
+        "category": "BUG",
         "description": "See attached.",
         "attachments": SimpleUploadedFile("evidence.png", b"\x89PNG\r\n", content_type="image/png"),
     }
@@ -50,6 +53,7 @@ def test_submit_ticket_rejects_disallowed_attachment_type(api_client):
         "reporter_name": "Jane",
         "email": "jane@example.com",
         "subject": "Broken",
+        "category": "BUG",
         "description": "See attached.",
         "attachments": SimpleUploadedFile("virus.exe", b"MZ", content_type="application/octet-stream"),
     }
@@ -62,7 +66,7 @@ def test_submit_ticket_rejects_disallowed_attachment_type(api_client):
 
 def test_submit_ticket_missing_required_field(api_client):
     url = reverse("ticket-create")
-    payload = {"reporter_name": "Jane", "subject": "s", "description": "d"}  # no email
+    payload = {"reporter_name": "Jane", "subject": "s", "category": "BUG", "description": "d"}  # no email
     response = api_client.post(url, payload, format="multipart")
 
     assert response.status_code == 400
@@ -71,12 +75,39 @@ def test_submit_ticket_missing_required_field(api_client):
     assert "email" in body["error"]["details"]
 
 
+def test_submit_ticket_missing_category(api_client):
+    url = reverse("ticket-create")
+    payload = {"reporter_name": "Jane", "email": "jane@example.com", "subject": "s", "description": "d"}
+    response = api_client.post(url, payload, format="multipart")
+
+    assert response.status_code == 400
+    body = response.json()
+    assert body["error"]["code"] == "validation_error"
+    assert "category" in body["error"]["details"]
+
+
+def test_submit_ticket_invalid_category_rejected(api_client):
+    url = reverse("ticket-create")
+    payload = {
+        "reporter_name": "Jane",
+        "email": "jane@example.com",
+        "subject": "s",
+        "category": "FEATURE_REQUEST",
+        "description": "d",
+    }
+    response = api_client.post(url, payload, format="multipart")
+
+    assert response.status_code == 400
+    assert "category" in response.json()["error"]["details"]
+
+
 def test_submit_ticket_invalid_email(api_client):
     url = reverse("ticket-create")
     payload = {
         "reporter_name": "Jane",
         "email": "not-an-email",
         "subject": "s",
+        "category": "BUG",
         "description": "d",
     }
     response = api_client.post(url, payload, format="multipart")
@@ -91,7 +122,13 @@ def test_submit_ticket_throttled_after_limit(api_client, monkeypatch):
 
     monkeypatch.setattr(TicketCreateThrottle, "THROTTLE_RATES", {"ticket_create": "2/hour"})
     url = reverse("ticket-create")
-    payload = {"reporter_name": "Jane", "email": "jane@example.com", "subject": "s", "description": "d"}
+    payload = {
+        "reporter_name": "Jane",
+        "email": "jane@example.com",
+        "subject": "s",
+        "category": "BUG",
+        "description": "d",
+    }
 
     for _ in range(2):
         assert api_client.post(url, payload, format="multipart").status_code == 201

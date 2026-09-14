@@ -18,6 +18,19 @@ class Priority(models.TextChoices):
     HIGH = "HIGH", "High"
 
 
+class Category(models.TextChoices):
+    """The seven approved values, per docs/DATABASE.md §2 Decision 13 —
+    that table is the source of truth for this list."""
+
+    ACCOUNT_ACCESS = "ACCOUNT_ACCESS", "Login & account access"
+    BILLING = "BILLING", "Billing & payments"
+    BUG = "BUG", "Something is broken"
+    PERFORMANCE = "PERFORMANCE", "Slow or unavailable"
+    DATA = "DATA", "Incorrect or missing data"
+    SECURITY = "SECURITY", "Security concern"
+    OTHER = "OTHER", "Something else"
+
+
 class IssuedFor(models.TextChoices):
     INITIAL = "initial", "Initial"
     STATUS_UPDATE = "status_update", "Status update"
@@ -34,6 +47,7 @@ class EventType(models.TextChoices):
     CREATED = "CREATED", "Created"
     STATUS_CHANGED = "STATUS_CHANGED", "Status changed"
     PRIORITY_CHANGED = "PRIORITY_CHANGED", "Priority changed"
+    CATEGORY_CHANGED = "CATEGORY_CHANGED", "Category changed"
     RESPONSE_ADDED = "RESPONSE_ADDED", "Response added"
     ATTACHMENT_ADDED = "ATTACHMENT_ADDED", "Attachment added"
     TOKEN_ISSUED = "TOKEN_ISSUED", "Token issued"

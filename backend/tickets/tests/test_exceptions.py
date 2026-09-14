@@ -12,7 +12,7 @@ def test_unhandled_exception_returns_uniform_500_envelope(api_client):
     ):
         response = api_client.post(
             reverse("ticket-create"),
-            {"reporter_name": "A", "email": "a@example.com", "subject": "s", "description": "d"},
+            {"reporter_name": "A", "email": "a@example.com", "subject": "s", "category": "BUG", "description": "d"},
             format="multipart",
         )
     assert response.status_code == 500

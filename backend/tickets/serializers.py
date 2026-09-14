@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from tickets.constants import CUSTOMER_VISIBLE_EVENT_TYPES, Priority, Status
+from tickets.constants import CUSTOMER_VISIBLE_EVENT_TYPES, Category, Priority, Status
 from tickets.models import Attachment, Response, Ticket, TicketEvent
 
 # --- Public plane -----------------------------------------------------------
@@ -10,13 +10,14 @@ class TicketCreateSerializer(serializers.Serializer):
     reporter_name = serializers.CharField(max_length=150)
     email = serializers.EmailField()
     subject = serializers.CharField(max_length=200)
+    category = serializers.ChoiceField(choices=Category.choices)
     description = serializers.CharField()
 
 
 class TicketCreateResponseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ticket
-        fields = ["reference", "subject", "status", "priority", "created_at"]
+        fields = ["reference", "subject", "category", "status", "priority", "created_at"]
 
 
 class ResendLinkSerializer(serializers.Serializer):
@@ -48,6 +49,7 @@ class TicketCustomerDetailSerializer(serializers.ModelSerializer):
     responses = serializers.SerializerMethodField()
     events = serializers.SerializerMethodField()
     attachments = AttachmentSerializer(many=True, read_only=True)
+    category_display = serializers.CharField(source="get_category_display", read_only=True)
 
     class Meta:
         model = Ticket
@@ -56,6 +58,8 @@ class TicketCustomerDetailSerializer(serializers.ModelSerializer):
             "subject",
             "description",
             "reporter_name",
+            "category",
+            "category_display",
             "status",
             "priority",
             "created_at",
@@ -107,6 +111,7 @@ class TicketAdminListSerializer(serializers.ModelSerializer):
         fields = [
             "reference",
             "subject",
+            "category",
             "status",
             "priority",
             "client_email",
@@ -121,6 +126,7 @@ class TicketAdminDetailSerializer(serializers.ModelSerializer):
     responses = ResponseAdminSerializer(many=True, read_only=True)
     events = EventAdminSerializer(many=True, read_only=True)
     attachments = AttachmentAdminSerializer(many=True, read_only=True)
+    category_display = serializers.CharField(source="get_category_display", read_only=True)
 
     class Meta:
         model = Ticket
@@ -130,6 +136,8 @@ class TicketAdminDetailSerializer(serializers.ModelSerializer):
             "description",
             "reporter_name",
             "client_email",
+            "category",
+            "category_display",
             "status",
             "priority",
             "created_at",
@@ -144,10 +152,11 @@ class TicketAdminDetailSerializer(serializers.ModelSerializer):
 class TicketUpdateSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=Status.choices, required=False)
     priority = serializers.ChoiceField(choices=Priority.choices, required=False)
+    category = serializers.ChoiceField(choices=Category.choices, required=False)
 
     def validate(self, attrs):
         if not attrs:
-            raise serializers.ValidationError("At least one of status or priority must be provided.")
+            raise serializers.ValidationError("At least one of status, priority, or category must be provided.")
         return attrs
 
 

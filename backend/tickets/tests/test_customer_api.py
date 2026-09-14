@@ -2,7 +2,7 @@ import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
-from tickets.constants import ActorType, EventType, IssuedFor
+from tickets.constants import ActorType, Category, EventType, IssuedFor
 from tickets.models import Attachment, Response, Ticket, TicketAccessToken
 from tickets.services import events as events_service
 
@@ -24,6 +24,8 @@ def test_track_valid_token_returns_ticket(api_client, ticket):
     data = response.json()
     assert data["reference"] == ticket.reference
     assert data["subject"] == ticket.subject
+    assert data["category"] == Category.ACCOUNT_ACCESS
+    assert data["category_display"] == "Login & account access"
 
 
 def test_track_invalid_token_returns_404_envelope(api_client):
@@ -55,7 +57,11 @@ def test_track_revoked_token_returns_410(api_client, ticket):
 
 def test_token_for_ticket_a_cannot_read_ticket_b(api_client, ticket, ticket_client):
     other_ticket = Ticket.objects.create(
-        client=ticket_client, reporter_name="Other", subject="Other subject", description="d"
+        client=ticket_client,
+        reporter_name="Other",
+        subject="Other subject",
+        description="d",
+        category=Category.BUG,
     )
     raw_for_a = _issue(ticket)
 
@@ -131,7 +137,7 @@ def test_attachment_download_success(api_client, ticket):
 
 def test_attachment_download_rejects_id_from_another_ticket(api_client, ticket, ticket_client):
     other_ticket = Ticket.objects.create(
-        client=ticket_client, reporter_name="Other", subject="s", description="d"
+        client=ticket_client, reporter_name="Other", subject="s", description="d", category=Category.BUG
     )
     other_attachment = Attachment.objects.create(
         ticket=other_ticket,

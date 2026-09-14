@@ -9,7 +9,7 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 
-from .constants import ActorType, EventType, IssuedFor, Priority, Status, TOKEN_TTL_DAYS
+from .constants import ActorType, Category, EventType, IssuedFor, Priority, Status, TOKEN_TTL_DAYS
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +53,7 @@ class Ticket(models.Model):
     reporter_name = models.CharField(max_length=150)
     subject = models.CharField(max_length=200)
     description = models.TextField()
+    category = models.CharField(max_length=20, choices=Category.choices)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.OPEN)
     priority = models.CharField(max_length=10, choices=Priority.choices, default=Priority.MEDIUM)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -64,6 +65,7 @@ class Ticket(models.Model):
         indexes = [
             models.Index(fields=["status", "-created_at"], name="ticket_status_created_idx"),
             models.Index(fields=["priority"], name="ticket_priority_idx"),
+            models.Index(fields=["category"], name="ticket_category_idx"),
         ]
         constraints = [
             models.CheckConstraint(
@@ -73,6 +75,10 @@ class Ticket(models.Model):
             models.CheckConstraint(
                 name="ticket_priority_valid",
                 condition=Q(priority__in=Priority.values),
+            ),
+            models.CheckConstraint(
+                name="ticket_category_valid",
+                condition=Q(category__in=Category.values),
             ),
             models.CheckConstraint(
                 name="ticket_resolved_at_consistency",

@@ -5,7 +5,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import ProtectedError
 from django.utils import timezone
 
-from tickets.constants import Priority, Status
+from tickets.constants import Category, Priority, Status
 from tickets.models import Response, Ticket, TicketAccessToken, TicketEvent
 
 pytestmark = pytest.mark.django_db
@@ -19,10 +19,10 @@ def test_reference_generated_on_create(ticket):
 
 def test_reference_unique(ticket_client):
     t1 = Ticket.objects.create(
-        client=ticket_client, reporter_name="A", subject="s1", description="d1"
+        client=ticket_client, reporter_name="A", subject="s1", description="d1", category=Category.BUG
     )
     t2 = Ticket.objects.create(
-        client=ticket_client, reporter_name="B", subject="s2", description="d2"
+        client=ticket_client, reporter_name="B", subject="s2", description="d2", category=Category.BUG
     )
     assert t1.reference != t2.reference
 
@@ -40,6 +40,7 @@ def test_status_check_constraint_rejects_invalid_value(ticket_client):
                 reporter_name="A",
                 subject="s",
                 description="d",
+                category=Category.BUG,
                 status="BOGUS",
             )
 
@@ -52,7 +53,32 @@ def test_priority_check_constraint_rejects_invalid_value(ticket_client):
                 reporter_name="A",
                 subject="s",
                 description="d",
+                category=Category.BUG,
                 priority="URGENT",
+            )
+
+
+def test_category_check_constraint_rejects_invalid_value(ticket_client):
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            Ticket.objects.create(
+                client=ticket_client,
+                reporter_name="A",
+                subject="s",
+                description="d",
+                category="FEATURE_REQUEST",
+            )
+
+
+def test_category_is_required(ticket_client):
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            Ticket.objects.create(
+                client=ticket_client,
+                reporter_name="A",
+                subject="s",
+                description="d",
+                category=None,
             )
 
 
@@ -64,6 +90,7 @@ def test_resolved_at_required_when_status_resolved(ticket_client):
                 reporter_name="A",
                 subject="s",
                 description="d",
+                category=Category.BUG,
                 status=Status.RESOLVED,
                 resolved_at=None,
             )
@@ -77,6 +104,7 @@ def test_resolved_at_forbidden_when_status_not_resolved(ticket_client):
                 reporter_name="A",
                 subject="s",
                 description="d",
+                category=Category.BUG,
                 status=Status.OPEN,
                 resolved_at=timezone.now(),
             )
@@ -88,6 +116,7 @@ def test_resolved_at_consistency_allows_valid_combination(ticket_client):
         reporter_name="A",
         subject="s",
         description="d",
+        category=Category.BUG,
         status=Status.RESOLVED,
         resolved_at=timezone.now(),
     )

@@ -98,13 +98,16 @@ class AdminTicketListView(generics.ListAPIView):
         priority_param = self.request.query_params.get("priority")
         if priority_param:
             qs = qs.filter(priority=priority_param)
+        category_param = self.request.query_params.get("category")
+        if category_param:
+            qs = qs.filter(category=category_param)
         return qs
 
 
 class AdminTicketDetailView(APIView):
     """GET/PATCH /api/admin/tickets/<reference>/ — keyed on reference, never
     the primary key. GET returns all responses (including internal) and all
-    events. PATCH updates status and/or priority."""
+    events. PATCH updates status, priority, and/or category."""
 
     permission_classes = [IsStaffUser]
 
@@ -128,6 +131,8 @@ class AdminTicketDetailView(APIView):
             ticket = tickets_service.update_status(ticket, data["status"], actor=request.user)
         if "priority" in data:
             ticket = tickets_service.update_priority(ticket, data["priority"], actor=request.user)
+        if "category" in data:
+            ticket = tickets_service.update_category(ticket, data["category"], actor=request.user)
 
         return DRFResponse(TicketAdminDetailSerializer(ticket).data)
 

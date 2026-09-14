@@ -1,6 +1,6 @@
 {
   "info": {
-    "_postman_id": "16d9a371-4668-4016-83ce-a18117bd5e8b",
+    "_postman_id": "ac356bbf-bd2b-4b59-9a02-6f2e44dad78b",
     "name": "Ticket System API (Step 2)",
     "description": "Exercises all three trust planes end-to-end against a running backend + Mailpit. Requests are order-dependent (run top-to-bottom / use Collection Runner or newman, not individual requests). Expired-token behavior is covered only by the pytest suite (cannot be produced live in 90 days via the API).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -36,6 +36,11 @@
                 {
                   "key": "subject",
                   "value": "Missing email test",
+                  "type": "text"
+                },
+                {
+                  "key": "category",
+                  "value": "ACCOUNT_ACCESS",
                   "type": "text"
                 },
                 {
@@ -99,6 +104,11 @@
                   "type": "text"
                 },
                 {
+                  "key": "category",
+                  "value": "ACCOUNT_ACCESS",
+                  "type": "text"
+                },
+                {
                   "key": "description",
                   "value": "This request has a malformed email.",
                   "type": "text"
@@ -154,6 +164,11 @@
                 {
                   "key": "subject",
                   "value": "Oversized attachment test",
+                  "type": "text"
+                },
+                {
+                  "key": "category",
+                  "value": "BUG",
                   "type": "text"
                 },
                 {
@@ -234,6 +249,11 @@
                   "type": "text"
                 },
                 {
+                  "key": "category",
+                  "value": "ACCOUNT_ACCESS",
+                  "type": "text"
+                },
+                {
                   "key": "description",
                   "value": "Getting a 500 error since this morning when I try to sign in.",
                   "type": "text"
@@ -252,6 +272,7 @@
                   "  pm.test('status is 201', () => pm.response.to.have.status(201));",
                   "  const body = pm.response.json();",
                   "  pm.test('has reference in TKT- format', () => pm.expect(body.reference).to.match(/^TKT-[A-Z0-9]{8}$/));",
+                  "  pm.test('category is ACCOUNT_ACCESS', () => pm.expect(body.category).to.eql('ACCOUNT_ACCESS'));",
                   "  pm.test('status is OPEN', () => pm.expect(body.status).to.eql('OPEN'));",
                   "  pm.test('priority is MEDIUM', () => pm.expect(body.priority).to.eql('MEDIUM'));",
                   "  pm.test('never returns a token or link (Decision 1)', () => {",
@@ -299,6 +320,11 @@
                 {
                   "key": "subject",
                   "value": "Error screenshot attached",
+                  "type": "text"
+                },
+                {
+                  "key": "category",
+                  "value": "BUG",
                   "type": "text"
                 },
                 {
@@ -363,6 +389,11 @@
                 {
                   "key": "subject",
                   "value": "This is request #6 in this run",
+                  "type": "text"
+                },
+                {
+                  "key": "category",
+                  "value": "OTHER",
                   "type": "text"
                 },
                 {
@@ -677,6 +708,8 @@
                   "  pm.test('status is 200', () => pm.response.to.have.status(200));",
                   "  const body = pm.response.json();",
                   "  pm.test('reference matches ticket B', () => pm.expect(body.reference).to.eql(pm.environment.get('reference2')));",
+                  "  pm.test('category is BUG', () => pm.expect(body.category).to.eql('BUG'));",
+                  "  pm.test('category_display is human-readable', () => pm.expect(body.category_display).to.eql('Something is broken'));",
                   "  pm.test('has one attachment', () => pm.expect(body.attachments.length).to.eql(1));",
                   "  pm.test('responses never expose author', () => {",
                   "    body.responses.forEach(r => pm.expect(r).to.not.have.property('author'));",
@@ -1141,6 +1174,41 @@
           ]
         },
         {
+          "name": "List Tickets - Filter by Category",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/tickets/?category=ACCOUNT_ACCESS",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "tickets",
+                "?category=ACCOUNT_ACCESS"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "  const body = pm.response.json();",
+                  "  pm.test('every result is ACCOUNT_ACCESS', () => body.results.forEach(t => pm.expect(t.category).to.eql('ACCOUNT_ACCESS')));",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "List Tickets - Search by Reference",
           "request": {
             "method": "GET",
@@ -1346,6 +1414,59 @@
                   "(function () {",
                   "  pm.test('status is 200', () => pm.response.to.have.status(200));",
                   "  pm.test('priority updated', () => pm.expect(pm.response.json().priority).to.eql('HIGH'));",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Patch Category",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/tickets/{{reference}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "tickets",
+                "{{reference}}",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"category\": \"BILLING\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(function () {",
+                  "  pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "  pm.test('category updated', () => pm.expect(pm.response.json().category).to.eql('BILLING'));",
                   "})();"
                 ]
               }

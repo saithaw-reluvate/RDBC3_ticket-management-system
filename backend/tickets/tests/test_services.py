@@ -5,7 +5,7 @@ from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.exceptions import ValidationError
 
-from tickets.constants import ActorType, EventType, IssuedFor, Status
+from tickets.constants import ActorType, Category, EventType, IssuedFor, Status
 from tickets.exceptions import ExpiredTokenError, InvalidTokenError, RevokedTokenError
 from tickets.models import Ticket, TicketAccessToken, TicketEvent
 from tickets.services import attachments as attachments_service
@@ -121,10 +121,12 @@ def test_create_ticket_creates_client_ticket_event_token_and_sends_email():
         reporter_name="Jane",
         email="Jane@Example.com",
         subject="Help",
+        category=Category.BUG,
         description="Something is broken.",
     )
 
     assert ticket.client.email == "jane@example.com"
+    assert ticket.category == Category.BUG
     assert ticket.access_tokens.count() == 1
     assert TicketEvent.objects.filter(ticket=ticket, event_type=EventType.CREATED).exists()
     assert TicketEvent.objects.filter(ticket=ticket, event_type=EventType.TOKEN_ISSUED).exists()
@@ -134,10 +136,14 @@ def test_create_ticket_creates_client_ticket_event_token_and_sends_email():
 
 def test_create_ticket_reuses_existing_client():
     tickets_service.create_ticket(
-        reporter_name="Jane", email="jane@example.com", subject="s1", description="d1"
+        reporter_name="Jane", email="jane@example.com", subject="s1", category=Category.BUG, description="d1"
     )
     ticket2 = tickets_service.create_ticket(
-        reporter_name="Jane Again", email="jane@example.com", subject="s2", description="d2"
+        reporter_name="Jane Again",
+        email="jane@example.com",
+        subject="s2",
+        category=Category.BILLING,
+        description="d2",
     )
     assert ticket2.client.tickets.count() == 2
 
@@ -147,6 +153,7 @@ def test_create_ticket_stores_attachments_and_records_events():
         reporter_name="Jane",
         email="jane@example.com",
         subject="Help",
+        category=Category.BUG,
         description="Broken",
         files=[_pdf("evidence.pdf")],
     )
@@ -158,7 +165,12 @@ def test_create_ticket_rejects_invalid_attachment_without_creating_ticket():
     bad = SimpleUploadedFile("script.exe", b"MZ", content_type="application/octet-stream")
     with pytest.raises(ValidationError):
         tickets_service.create_ticket(
-            reporter_name="Jane", email="jane@example.com", subject="s", description="d", files=[bad]
+            reporter_name="Jane",
+            email="jane@example.com",
+            subject="s",
+            category=Category.BUG,
+            description="d",
+            files=[bad],
         )
     assert not Ticket.objects.exists()
 
@@ -166,15 +178,19 @@ def test_create_ticket_rejects_invalid_attachment_without_creating_ticket():
 def test_create_ticket_email_failure_is_logged_and_does_not_raise():
     with patch("tickets.services.emails.send_mail", side_effect=OSError("smtp down")):
         ticket = tickets_service.create_ticket(
-            reporter_name="Jane", email="jane@example.com", subject="s", description="d"
+            reporter_name="Jane", email="jane@example.com", subject="s", category=Category.BUG, description="d"
         )
     assert ticket.pk is not None
     assert TicketEvent.objects.filter(ticket=ticket, event_type=EventType.EMAIL_FAILED).exists()
 
 
 def test_resend_links_for_email_issues_fresh_token_per_ticket():
-    t1 = tickets_service.create_ticket(reporter_name="A", email="dup@example.com", subject="s1", description="d1")
-    t2 = tickets_service.create_ticket(reporter_name="A", email="dup@example.com", subject="s2", description="d2")
+    t1 = tickets_service.create_ticket(
+        reporter_name="A", email="dup@example.com", subject="s1", category=Category.BUG, description="d1"
+    )
+    t2 = tickets_service.create_ticket(
+        reporter_name="A", email="dup@example.com", subject="s2", category=Category.BUG, description="d2"
+    )
     mail.outbox.clear()
 
     tickets_service.resend_links_for_email("dup@example.com")
@@ -227,6 +243,23 @@ def test_update_priority_records_event(ticket, staff_user):
     updated = tickets_service.update_priority(ticket, Priority.HIGH, actor=staff_user)
     assert updated.priority == Priority.HIGH
     assert TicketEvent.objects.filter(ticket=ticket, event_type=EventType.PRIORITY_CHANGED).exists()
+
+
+def test_update_category_records_event(ticket, staff_user):
+    assert ticket.category == Category.ACCOUNT_ACCESS
+    updated = tickets_service.update_category(ticket, Category.BILLING, actor=staff_user)
+    assert updated.category == Category.BILLING
+    assert TicketEvent.objects.filter(
+        ticket=ticket,
+        event_type=EventType.CATEGORY_CHANGED,
+        old_value=Category.ACCOUNT_ACCESS,
+        new_value=Category.BILLING,
+    ).exists()
+
+
+def test_update_category_noop_when_unchanged(ticket, staff_user):
+    tickets_service.update_category(ticket, ticket.category, actor=staff_user)
+    assert not TicketEvent.objects.filter(ticket=ticket, event_type=EventType.CATEGORY_CHANGED).exists()
 
 
 def test_add_response_public_sends_email_and_mints_token(ticket, staff_user):

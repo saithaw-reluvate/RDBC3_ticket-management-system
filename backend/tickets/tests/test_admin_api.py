@@ -3,7 +3,7 @@ from django.core import mail
 from django.urls import reverse
 from rest_framework.test import APIClient
 
-from tickets.constants import IssuedFor, Priority, Status
+from tickets.constants import Category, IssuedFor, Priority, Status
 from tickets.models import Response, Ticket, TicketAccessToken
 
 pytestmark = pytest.mark.django_db
@@ -81,13 +81,19 @@ def test_list_returns_tickets(admin_api_client, ticket):
 
 def test_list_filters_by_status(admin_api_client, ticket_client):
     open_ticket = Ticket.objects.create(
-        client=ticket_client, reporter_name="A", subject="open one", description="d", status=Status.OPEN
+        client=ticket_client,
+        reporter_name="A",
+        subject="open one",
+        description="d",
+        category=Category.BUG,
+        status=Status.OPEN,
     )
     resolved_ticket = Ticket.objects.create(
         client=ticket_client,
         reporter_name="A",
         subject="resolved one",
         description="d",
+        category=Category.BUG,
         status=Status.RESOLVED,
         resolved_at="2026-01-01T00:00:00Z",
     )
@@ -95,6 +101,19 @@ def test_list_filters_by_status(admin_api_client, ticket_client):
     references = [t["reference"] for t in response.json()["results"]]
     assert resolved_ticket.reference in references
     assert open_ticket.reference not in references
+
+
+def test_list_filters_by_category(admin_api_client, ticket_client):
+    bug_ticket = Ticket.objects.create(
+        client=ticket_client, reporter_name="A", subject="bug one", description="d", category=Category.BUG
+    )
+    billing_ticket = Ticket.objects.create(
+        client=ticket_client, reporter_name="A", subject="billing one", description="d", category=Category.BILLING
+    )
+    response = admin_api_client.get(reverse("admin-ticket-list"), {"category": "BILLING"})
+    references = [t["reference"] for t in response.json()["results"]]
+    assert billing_ticket.reference in references
+    assert bug_ticket.reference not in references
 
 
 def test_list_search_by_reference(admin_api_client, ticket):
@@ -141,6 +160,22 @@ def test_patch_priority(admin_api_client, ticket):
     )
     assert response.status_code == 200
     assert response.json()["priority"] == "HIGH"
+
+
+def test_patch_category(admin_api_client, ticket):
+    response = admin_api_client.patch(
+        reverse("admin-ticket-detail", args=[ticket.reference]), {"category": "BILLING"}, format="json"
+    )
+    assert response.status_code == 200
+    assert response.json()["category"] == "BILLING"
+
+
+def test_patch_invalid_category_rejected(admin_api_client, ticket):
+    response = admin_api_client.patch(
+        reverse("admin-ticket-detail", args=[ticket.reference]), {"category": "FEATURE_REQUEST"}, format="json"
+    )
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "validation_error"
 
 
 def test_patch_invalid_status_rejected(admin_api_client, ticket):
@@ -239,7 +274,7 @@ def test_admin_attachment_download_wrong_ticket_returns_404(admin_api_client, ti
     from tickets.models import Attachment
 
     other_ticket = Ticket.objects.create(
-        client=ticket_client, reporter_name="Other", subject="s", description="d"
+        client=ticket_client, reporter_name="Other", subject="s", description="d", category=Category.BUG
     )
     other_attachment = Attachment.objects.create(
         ticket=other_ticket,

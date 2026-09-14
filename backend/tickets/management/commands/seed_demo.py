@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from tickets.constants import ActorType, EventType, IssuedFor, Priority, Status
+from tickets.constants import ActorType, Category, EventType, IssuedFor, Priority, Status
 from tickets.models import Client, Response, Ticket, TicketAccessToken, TicketEvent
 
 
@@ -17,6 +17,7 @@ class Command(BaseCommand):
             defaults={
                 "reporter_name": "Demo Customer",
                 "description": "Getting an error when trying to sign in since this morning.",
+                "category": Category.ACCOUNT_ACCESS,
                 "status": Status.OPEN,
                 "priority": Priority.HIGH,
             },

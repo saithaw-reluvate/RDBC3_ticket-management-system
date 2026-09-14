@@ -13,7 +13,9 @@ from tickets.services import tokens as tokens_service
 logger = logging.getLogger(__name__)
 
 
-def create_ticket(*, reporter_name: str, email: str, subject: str, description: str, files=None) -> Ticket:
+def create_ticket(
+    *, reporter_name: str, email: str, subject: str, category: str, description: str, files=None
+) -> Ticket:
     files = files or []
     # Validate before creating anything, so a bad upload never leaves a
     # half-created ticket behind.
@@ -25,6 +27,7 @@ def create_ticket(*, reporter_name: str, email: str, subject: str, description: 
             client=client,
             reporter_name=reporter_name,
             subject=subject,
+            category=category,
             description=description,
         )
         events_service.record(ticket, EventType.CREATED, actor_type=ActorType.CUSTOMER)
@@ -94,6 +97,25 @@ def update_priority(ticket: Ticket, new_priority: str, *, actor) -> Ticket:
         actor_type=ActorType.ADMIN,
         old_value=old_priority,
         new_value=new_priority,
+    )
+    return ticket
+
+
+def update_category(ticket: Ticket, new_category: str, *, actor) -> Ticket:
+    old_category = ticket.category
+    if new_category == old_category:
+        return ticket
+
+    ticket.category = new_category
+    ticket.save(update_fields=["category", "updated_at"])
+
+    events_service.record(
+        ticket,
+        EventType.CATEGORY_CHANGED,
+        actor=actor,
+        actor_type=ActorType.ADMIN,
+        old_value=old_category,
+        new_value=new_category,
     )
     return ticket
 

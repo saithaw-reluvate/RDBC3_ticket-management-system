@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from rest_framework.test import APIClient
 
-from tickets.constants import IssuedFor, Priority, Status
+from tickets.constants import Category, IssuedFor, Priority, Status
 from tickets.models import Client, Ticket
 
 # Captured at import time, before pytest-django's setup_test_environment()
@@ -62,6 +62,7 @@ def ticket(db, ticket_client) -> Ticket:
         reporter_name="Jane Customer",
         subject="Cannot access account",
         description="Login fails with a 500 error.",
+        category=Category.ACCOUNT_ACCESS,
         status=Status.OPEN,
         priority=Priority.MEDIUM,
     )
