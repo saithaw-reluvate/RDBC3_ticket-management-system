@@ -1,0 +1,76 @@
+# Production compose file for the existing AWS EC2 instance.
+# See docs/DEPLOYMENT.md for the approved design and every decision below.
+#
+# Secrets: /opt/ticket-system/.env is created by hand on the instance and
+# referenced here by its explicit absolute path (docs/DEPLOYMENT.md §5) — it
+# lives outside the repo checkout on purpose, so it is never at risk of being
+# committed. Because it isn't next to this file, Compose does not auto-load
+# it for ${VAR} substitution *within this file*; anywhere that's needed
+# below, the variable is escaped as $$VAR so the container's own shell
+# expands it at runtime from the env_file-provided environment instead.
+#
+# Only nginx reaches the host network. frontend, backend, and db have no
+# `ports:` mapping — they are reachable exclusively from other containers on
+# the Compose network.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file:
+      - /opt/ticket-system/.env
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - /opt/ticket-system/.env
+    volumes:
+      - media:/app/backend/media
+      - staticfiles:/app/backend/staticfiles
+      - logs:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      # Next.js bakes the rewrites() destination into the standalone build at
+      # `next build` time — it must be supplied here too, not only below, or
+      # the image falls back to the http://localhost:8000 dev default and
+      # every /api/* request 500s (docs/DEPLOYMENT.md §4 footnote).
+      args:
+        BACKEND_ORIGIN: http://backend:8000
+    restart: unless-stopped
+    environment:
+      BACKEND_ORIGIN: http://backend:8000
+    depends_on:
+      - backend
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - staticfiles:/staticfiles:ro
+    depends_on:
+      - frontend
+
+volumes:
+  pgdata:
+  media:
+  staticfiles:
+  logs:

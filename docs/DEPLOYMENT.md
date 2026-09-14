@@ -106,7 +106,7 @@ All existing dev keys from `.env.example` carry over unchanged in *name*; only
 |---|---|---|
 | `DJANGO_SECRET_KEY` | dev placeholder | Real random secret, generated once, stored only in the EC2 `.env` |
 | `DJANGO_DEBUG` | `True` | `False` |
-| `DJANGO_ALLOWED_HOSTS` | `localhost,127.0.0.1` | The EC2 instance's public IP |
+| `DJANGO_ALLOWED_HOSTS` | `localhost,127.0.0.1` | `backend` |
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | `http://localhost:3000` | `http://<EC2_PUBLIC_IP>` |
 | `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | dev defaults | Real values, generated once, stored only in the EC2 `.env` |
 | `POSTGRES_HOST` | `localhost` | `db` (the Compose service name) |
@@ -130,6 +130,26 @@ All existing dev keys from `.env.example` carry over unchanged in *name*; only
 No `NEXT_PUBLIC_*` variables exist or are needed — the frontend never talks to the
 backend from browser JavaScript using an absolute URL; it always goes through the
 same-origin `/api/*` rewrite or, for Server Components, `BACKEND_ORIGIN` server-side.
+
+> **`DJANGO_ALLOWED_HOSTS` tracks the internal destination, not the public
+> address.** Django is only ever reached via the frontend's server-side `/api/*`
+> proxy call, so the `Host` header it sees is always the proxy's destination —
+> `backend:8000` — regardless of what the browser's original request targeted.
+> `DJANGO_CSRF_TRUSTED_ORIGINS` is the opposite: the browser's `Origin` header is
+> forwarded through unchanged by the proxy, so that one *does* need the
+> public-facing address. Verified against a real `DisallowedHost` 400 hit during
+> local testing of this plan before either was understood correctly.
+
+> **Build-time, not just runtime.** Next.js resolves `next.config.mjs`'s
+> `rewrites()` destination once at `next build` and bakes it into the standalone
+> output's routes manifest — it is not re-read from `process.env` when the
+> container starts. `BACKEND_ORIGIN` must therefore be passed as a Docker build
+> ARG for the frontend image (fixed at `http://backend:8000`, matching the
+> Compose service name), in addition to being set as a normal runtime
+> environment variable for the Server Component code path that reads
+> `process.env.BACKEND_ORIGIN` directly. Both are the same value here, so this
+> has no operational impact beyond needing an image rebuild — not just a
+> restart — if the backend's internal address were ever to change.
 
 ### AWS SES setup (informational, not a code/settings change)
 
