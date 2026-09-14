@@ -34,7 +34,7 @@ in Step 4 still works end to end against the containerized stack.
 | 3 | **nginx has exactly one proxied upstream: the frontend container.** | The Next.js `/api/*` rewrite (`BACKEND_ORIGIN`) already proxies API calls to the backend server-side, container-to-container — that mechanism does not change in production. nginx does not need its own `/api/` routing rule; it forwards everything except `/static/` to `frontend:3000`. |
 | 4 | **Static files: `collectstatic` into a shared named volume; nginx serves `/static/` directly from it.** | Covers Django's built-in `/admin/` site and DRF's default `BrowsableAPIRenderer`, both of which need CSS/JS to render. No new Python dependency (rejected: `whitenoise`) — nginx already exists and doing this is one `location` block. |
 | 5 | **Attachments remain served only through the Django access-checked view — nginx never gets a `/media/` location block.** | Unchanged from `CLAUDE.md`/Decision 5 in `ARCHITECTURE.md`: attachments must never be reachable from a public static path. This is a hard constraint carried into Step 5, not a new decision. |
-| 6 | **Secrets: a plain `.env` file created directly on the EC2 host (never committed), consumed via docker-compose's `env_file:`.** | Identical mechanism to development (`settings.py` already reads env vars the same way either source). No new AWS service, no IAM role to provision — matches "no unnecessary infrastructure." |
+| 6 | **Secrets: a plain `.env` file at `/opt/ticket-system/.env` on the EC2 host (never committed), referenced by an explicit absolute path in `docker-compose.prod.yml`'s `env_file:`.** | Identical mechanism to development (`settings.py` already reads env vars the same way either source). No new AWS service, no IAM role to provision — matches "no unnecessary infrastructure." The path is absolute and explicit, not a bare `env_file: .env`, because the file lives outside the repository working copy on purpose (§5). |
 | 7 | **Deploy via manual SSH runbook: `git pull` + `docker compose -f docker-compose.prod.yml build && up -d` on the instance itself.** | Matches `ARCHITECTURE.md` §7's single-instance scope exactly. No registry, no CI pipeline — appropriately sized for this exercise. Documented as a runbook in the README per `CLAUDE.md`'s Step 5/6 requirements. |
 | 8 | **Production email: AWS SES SMTP, same `django.core.mail.backends.smtp.EmailBackend` code path.** | No code change — only new env var *values* (SES SMTP endpoint/port/IAM-generated username-password, `EMAIL_USE_TLS=True`). Per `ARCHITECTURE.md` Decision 4, approved fallback if SES sandbox blocks the deadline is Gmail SMTP with an app password — same env vars, different values. |
 | 9 | **Postgres, media, and logs each get their own named Docker volume; Postgres is not exposed on a host port in production.** | `pgdata` already exists in dev for exactly this reason (§ current `docker-compose.yml`). Media and logs need the same durability across container recreation. Postgres has no reason to be reachable from outside the Docker network in production, unlike dev where a host tool might want to connect directly. |
@@ -77,10 +77,21 @@ Volumes: pgdata, media, logs, staticfiles
 Mailpit is NOT present in production — SES SMTP replaces it entirely.
 ```
 
-Only nginx publishes a host port. `frontend`, `backend`, and `db` are reachable only
-within the Compose network, same trust shape as development where Django is "not
-publicly exposed" (`ARCHITECTURE.md` §1) — nginx is simply now what stands in front
-of the frontend instead of `next dev` binding directly to the host.
+**nginx is the only service that reaches the host network.** It is the sole service
+with a `ports:` mapping (`80:80`). `frontend`, `backend`, and `db` are internal-only
+Compose services with no host port mapping at all — reachable exclusively from other
+containers on the Compose network, never directly from the host or the public
+internet. This is the same trust shape as development where Django is "not publicly
+exposed" (`ARCHITECTURE.md` §1) — nginx is simply now what stands in front of the
+frontend instead of `next dev` binding directly to the host.
+
+**A note on the public IP:** the EC2 instance's current public IPv4 address is not
+guaranteed stable across a stop/start unless an Elastic IP is associated with the
+instance. This does not block this exercise's deployment — the "live AWS URL"
+deliverable can simply be re-checked/re-shared if the instance is ever stopped and
+restarted — but is worth knowing before treating the current IP as permanent (e.g. in
+a submitted README link). Attaching an Elastic IP is a console/CLI action outside this
+repo, not a change to anything planned here.
 
 ---
 
@@ -134,12 +145,22 @@ AWS API.
 
 ## 5. Secrets on EC2
 
-A single `.env` file is created directly on the EC2 instance (e.g. at
-`/opt/ticket-system/.env`), outside of Git entirely — not even matching a gitignored
+A single `.env` file is created directly on the EC2 instance at
+`/opt/ticket-system/.env`, outside of Git entirely — not even matching a gitignored
 path inside the working copy, to remove any risk of an accidental `git add -f`.
-`docker-compose.prod.yml` references it via `env_file: .env` on the `backend` service
-(and `db`, for the Postgres credentials). It is created once by hand over SSH and
-updated by hand when a value changes; nothing automates its contents.
+`docker-compose.prod.yml` references it by that exact absolute path —
+`env_file: /opt/ticket-system/.env` — on the `db` and `backend` services, not a bare
+`env_file: .env`, since the file does not live inside (or relative to) the repository
+checkout on the instance. It is created once by hand over SSH and updated by hand
+when a value changes; nothing automates its contents.
+
+One consequence of the file living outside the Compose project directory: Compose
+does not auto-load it for `${VAR}`-style substitution *within* `docker-compose.prod.yml`
+itself (that auto-load only happens for a `.env` beside the compose file). Anywhere
+the compose file needs a value at the shell level — e.g. the Postgres healthcheck
+command — it must reference the variable as `$$VAR` (escaped) so Compose leaves it
+for the container's own shell to expand from the `env_file`-provided runtime
+environment, rather than trying to substitute it itself at parse time.
 
 This mirrors the existing dev pattern exactly — `.env.example` documents every key
 with a dummy value, `settings.py` already reads from the environment however it got
