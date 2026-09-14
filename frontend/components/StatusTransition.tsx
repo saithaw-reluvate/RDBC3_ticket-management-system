@@ -1,3 +1,5 @@
+import { CATEGORIES } from "@/lib/types";
+
 const LABELS: Record<string, string> = {
   OPEN: "Open",
   IN_PROGRESS: "In progress",
@@ -5,6 +7,7 @@ const LABELS: Record<string, string> = {
   LOW: "Low",
   MEDIUM: "Medium",
   HIGH: "High",
+  ...Object.fromEntries(CATEGORIES.map((c) => [c.value, c.label])),
 };
 
 function label(value: string): string {

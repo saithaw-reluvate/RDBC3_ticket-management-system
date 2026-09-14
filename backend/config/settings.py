@@ -44,6 +44,15 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "insecure-dev-only-key")
 DEBUG = _env_bool("DJANGO_DEBUG", False)
 ALLOWED_HOSTS = _env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
 
+# Django's CSRF check compares the browser's Origin header against the
+# request Host. Next.js's /api/* rewrite (docs/ARCHITECTURE.md Decision 3)
+# proxies server-side to BACKEND_ORIGIN, so Django sees Host: localhost:8000
+# while the browser's Origin stays the Next.js origin (localhost:3000) —
+# an origin/host mismatch Django rejects by default on every unsafe admin
+# request. CSRF_TRUSTED_ORIGINS is the standard fix for exactly this
+# reverse-proxy shape.
+CSRF_TRUSTED_ORIGINS = _env_list("DJANGO_CSRF_TRUSTED_ORIGINS", "http://localhost:3000")
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",

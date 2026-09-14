@@ -141,7 +141,7 @@ export default function QueueLayout({ children }: { children: React.ReactNode })
                       <div className={`reference-code text-sm ${selected ? "text-oxide" : ""}`}>
                         {ticket.reference}
                       </div>
-                      <div className={`truncate text-sm ${selected ? "font-medium" : ""}`}>{ticket.subject}</div>
+                      <div className={`truncate text-sm ${selected ? "font-bold" : ""}`}>{ticket.subject}</div>
                       <div className="mt-1 flex items-center justify-between gap-2 xs:flex hidden">
                         <CategoryTag category={ticket.category} />
                         <StatusBadge status={ticket.status} />

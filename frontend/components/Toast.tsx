@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 export type ToastVariant = "success" | "error" | "info";
 
 const VARIANT_COLOR: Record<ToastVariant, string> = {
@@ -12,11 +14,20 @@ export default function Toast({
   message,
   variant = "info",
   onDismiss,
+  duration = 4000,
 }: {
   message: string;
   variant?: ToastVariant;
   onDismiss?: () => void;
+  /** ms before auto-dismiss; pass 0 to disable (stays until manually dismissed). */
+  duration?: number;
 }) {
+  useEffect(() => {
+    if (!onDismiss || duration <= 0) return;
+    const timer = setTimeout(onDismiss, duration);
+    return () => clearTimeout(timer);
+  }, [onDismiss, duration, message]);
+
   return (
     <div
       role="status"

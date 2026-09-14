@@ -30,7 +30,11 @@ async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<Ap
 
   let response: Response;
   try {
-    response = await fetch(url, init);
+    // origin is only ever passed from a Server Component (see
+    // getTicketByToken), where Next.js's fetch() defaults to caching the
+    // response indefinitely — /track/[token] must always show live status,
+    // including a token that has since expired/been revoked.
+    response = await fetch(url, origin ? { ...init, cache: "no-store" } : init);
   } catch {
     return { ok: false, code: "server_error", message: "Could not reach the server.", details: {} };
   }
