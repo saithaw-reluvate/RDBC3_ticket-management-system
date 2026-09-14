@@ -156,7 +156,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # ---------------------------------------------------------------------------
 # Email (Step 0 Decision 4) — one SMTP code path; only env vars change
-# between Mailpit (dev) and AWS SES / Gmail (prod).
+# between Mailpit (dev) and Gmail SMTP (prod, docs/DEPLOYMENT.md).
 # ---------------------------------------------------------------------------
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = os.environ.get("EMAIL_HOST", "localhost")

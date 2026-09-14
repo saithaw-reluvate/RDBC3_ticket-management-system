@@ -97,16 +97,19 @@ origin means session cookies and CSRF work with default-safe settings, no CORS
 configuration, and no additional container. If a real domain and HTTPS are wanted
 later, nginx or Caddy can be added in Step 5 without touching application code.
 
-### Decision 4 — Email: Mailpit in development, AWS SES in production
+### Decision 4 — Email: Mailpit in development, Gmail SMTP in production
 
 One SMTP code path on both sides; only environment variables change.
 
 Mailpit is used in development specifically so the tracking link can be *clicked*,
 which is what makes the identification flow testable end to end.
 
-*Known constraint:* a new AWS account is SES-sandboxed and can only send to verified
-addresses until production access is granted. **Fallback if that blocks the
-deadline:** Gmail SMTP with an app password — same code path, one env change.
+*Updated in Step 5 (`docs/DEPLOYMENT.md`):* production uses Gmail SMTP
+(`smtp.gmail.com:587`, STARTTLS, a Google App Password) rather than the originally
+planned AWS SES. This was already the project's pre-approved fallback for exactly
+this decision — switching to it as the primary choice removes the AWS
+account/sandbox dependency entirely, with the same one-SMTP-code-path, only-env-vars-
+change mechanism.
 
 ### Decision 5 — Attachments on a Docker volume, served through access checks
 

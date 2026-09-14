@@ -203,8 +203,11 @@ Never accept a sequential or numeric ticket ID as proof of identity.
 ## Email
 One SMTP code path everywhere; only environment variables change.
 - Development: Mailpit container (tracking links must be clickable in dev).
-- Production: AWS SES.
-- Approved fallback if the SES sandbox blocks the deadline: Gmail SMTP app password.
+- Production: Gmail SMTP — `smtp.gmail.com`, port `587`, STARTTLS, authenticated with
+  a Google App Password (never the account's real login password). Supersedes the
+  originally planned AWS SES (Step 5 decision — see `docs/DEPLOYMENT.md`); this was
+  already the project's pre-approved fallback, and switching removes the AWS
+  account/sandbox dependency entirely.
 
 Send email synchronously inside the request, wrapped so a mail failure is logged as
 an error but never fails ticket creation. Do NOT add Celery or Redis.

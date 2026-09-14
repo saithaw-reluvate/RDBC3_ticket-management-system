@@ -17,7 +17,7 @@ Turn the existing dev-only `docker-compose.yml` (Postgres + Mailpit, application
 run outside containers) into a production stack for the existing AWS EC2 instance:
 containerized Next.js frontend, containerized Django/Gunicorn backend, containerized
 PostgreSQL, a reverse proxy, and persistent volumes — with production email routed
-through AWS SES instead of Mailpit.
+through Gmail SMTP instead of Mailpit.
 
 Step 5 is complete only when `docker compose -f docker-compose.prod.yml up -d` on the
 EC2 instance serves the full application over its public IP and every flow verified
@@ -36,7 +36,7 @@ in Step 4 still works end to end against the containerized stack.
 | 5 | **Attachments remain served only through the Django access-checked view — nginx never gets a `/media/` location block.** | Unchanged from `CLAUDE.md`/Decision 5 in `ARCHITECTURE.md`: attachments must never be reachable from a public static path. This is a hard constraint carried into Step 5, not a new decision. |
 | 6 | **Secrets: a plain `.env` file at `/opt/ticket-system/.env` on the EC2 host (never committed), referenced by an explicit absolute path in `docker-compose.prod.yml`'s `env_file:`.** | Identical mechanism to development (`settings.py` already reads env vars the same way either source). No new AWS service, no IAM role to provision — matches "no unnecessary infrastructure." The path is absolute and explicit, not a bare `env_file: .env`, because the file lives outside the repository working copy on purpose (§5). |
 | 7 | **Deploy via manual SSH runbook: `git pull` + `docker compose -f docker-compose.prod.yml build && up -d` on the instance itself.** | Matches `ARCHITECTURE.md` §7's single-instance scope exactly. No registry, no CI pipeline — appropriately sized for this exercise. Documented as a runbook in the README per `CLAUDE.md`'s Step 5/6 requirements. |
-| 8 | **Production email: AWS SES SMTP, same `django.core.mail.backends.smtp.EmailBackend` code path.** | No code change — only new env var *values* (SES SMTP endpoint/port/IAM-generated username-password, `EMAIL_USE_TLS=True`). Per `ARCHITECTURE.md` Decision 4, approved fallback if SES sandbox blocks the deadline is Gmail SMTP with an app password — same env vars, different values. |
+| 8 | **Production email: Gmail SMTP, same `django.core.mail.backends.smtp.EmailBackend` code path.** | No code change — only new env var *values* (`smtp.gmail.com`, port `587`, a Gmail address as the SMTP username, a Google App Password as the SMTP password, `EMAIL_USE_TLS=True`). Supersedes the originally planned AWS SES (`ARCHITECTURE.md` Decision 4) — this was already the project's pre-approved fallback, and switching to it removes the AWS account/sandbox dependency entirely. |
 | 9 | **Postgres, media, and logs each get their own named Docker volume; Postgres is not exposed on a host port in production.** | `pgdata` already exists in dev for exactly this reason (§ current `docker-compose.yml`). Media and logs need the same durability across container recreation. Postgres has no reason to be reachable from outside the Docker network in production, unlike dev where a host tool might want to connect directly. |
 | 10 | **Migrations and `collectstatic` run automatically via a backend container entrypoint script, before Gunicorn starts.** | Keeps the deploy runbook to one command. Low risk at this project's size and matches "verify then serve" — not a separate manual step to forget. |
 
@@ -74,7 +74,7 @@ Browser (EC2 public IP, port 80)
                                                   └──────────────────────────┘
 
 Volumes: pgdata, media, logs, staticfiles
-Mailpit is NOT present in production — SES SMTP replaces it entirely.
+Mailpit is NOT present in production — Gmail SMTP replaces it entirely.
 ```
 
 **nginx is the only service that reaches the host network.** It is the sole service
@@ -111,12 +111,12 @@ All existing dev keys from `.env.example` carry over unchanged in *name*; only
 | `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | dev defaults | Real values, generated once, stored only in the EC2 `.env` |
 | `POSTGRES_HOST` | `localhost` | `db` (the Compose service name) |
 | `POSTGRES_PORT` | `5432` | `5432` |
-| `EMAIL_HOST` | `localhost` (Mailpit) | SES SMTP endpoint, e.g. `email-smtp.<region>.amazonaws.com` |
+| `EMAIL_HOST` | `localhost` (Mailpit) | `smtp.gmail.com` |
 | `EMAIL_PORT` | `1025` | `587` |
-| `EMAIL_HOST_USER` | empty | SES SMTP IAM-generated username |
-| `EMAIL_HOST_PASSWORD` | empty | SES SMTP IAM-generated password |
+| `EMAIL_HOST_USER` | empty | The sending Gmail address |
+| `EMAIL_HOST_PASSWORD` | empty | A Google App Password (16 characters, generated for this app — never the account's real login password) |
 | `EMAIL_USE_TLS` | `False` | `True` |
-| `DEFAULT_FROM_EMAIL` | `support@example.com` | A real address verified in SES (required while SES is sandboxed) |
+| `DEFAULT_FROM_EMAIL` | `support@example.com` | The same Gmail address as `EMAIL_HOST_USER` — see note below |
 | `FRONTEND_BASE_URL` | `http://localhost:3000` | `http://<EC2_PUBLIC_IP>` |
 | `TICKET_TOKEN_TTL_DAYS` | `90` | `90` (unchanged) |
 | `ATTACHMENT_MAX_BYTES` / `ATTACHMENT_MAX_COUNT` | `5242880` / `5` | unchanged |
@@ -151,15 +151,21 @@ same-origin `/api/*` rewrite or, for Server Components, `BACKEND_ORIGIN` server-
 > has no operational impact beyond needing an image rebuild — not just a
 > restart — if the backend's internal address were ever to change.
 
-### AWS SES setup (informational, not a code/settings change)
+### Gmail SMTP setup (informational, not a code/settings change)
 
-SES itself is provisioned outside the repo: verify the sending domain or address,
-request production access to leave the sandbox (or use the already-approved Gmail
-SMTP fallback if that request doesn't clear in time), and generate SMTP-specific IAM
-credentials (these are distinct from AWS access keys — SES issues a separate
-username/password pair for SMTP AUTH). Only the resulting SMTP endpoint, port,
-username, and password land in the EC2 `.env`; nothing else in the stack talks to any
-AWS API.
+Gmail itself is provisioned outside the repo: enable 2-Step Verification on the
+sending Google account (required before an App Password can be generated), then
+generate a 16-character Google App Password scoped to this app (Google Account →
+Security → App passwords). Only the Gmail address and the App Password land in the
+EC2 `.env`; nothing else in the stack talks to any Google API.
+
+**`DEFAULT_FROM_EMAIL` must match `EMAIL_HOST_USER`.** Gmail's SMTP relay
+authenticates the connection as a specific mailbox and will reject or silently
+rewrite a `From` address that isn't that mailbox (or a verified "Send mail as" alias
+on it) — unlike AWS SES, which allows any verified sender address independent of the
+SMTP credentials used. This is the one real behavioural difference the switch
+introduces; it does not require a code change since both values are already
+independent environment variables.
 
 ---
 
@@ -214,8 +220,8 @@ Documented in full in the README at Step 6; summarized here for the plan record:
 4. The backend entrypoint runs `manage.py migrate` and `manage.py collectstatic --noinput`
    automatically before Gunicorn starts — no separate manual step.
 5. Verify: hit `http://<EC2_PUBLIC_IP>/` in a browser, submit a test ticket, confirm
-   the email arrives via SES (or the Gmail fallback), confirm the admin dashboard
-   loads and the tracking link works.
+   the email arrives via Gmail SMTP, confirm the admin dashboard loads and the
+   tracking link works.
 
 ---
 
@@ -242,7 +248,7 @@ Step 5 is not complete until:
 
 1. `docker compose -f docker-compose.prod.yml up -d` brings up all four containers
    healthy (`db` healthcheck passing; `backend` and `frontend` responding).
-2. The full customer journey (submit → SES email → tracking link → status view) and
+2. The full customer journey (submit → Gmail SMTP email → tracking link → status view) and
    the full admin journey (login → manage → respond → resend/revoke) work through
    the public EC2 IP, mirroring the Step 4 Playwright journey but against the
    containerized stack.
