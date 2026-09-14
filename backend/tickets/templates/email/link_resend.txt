@@ -1,0 +1,7 @@
+Hi {{ ticket.reporter_name }},
+
+Here is your tracking link for ticket {{ ticket.reference }} ("{{ ticket.subject }}"):
+{{ tracking_url }}
+
+Thanks,
+Support Team

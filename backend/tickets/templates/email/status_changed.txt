@@ -1,0 +1,10 @@
+Hi {{ ticket.reporter_name }},
+
+Your ticket {{ ticket.reference }} ("{{ ticket.subject }}") changed status from
+{{ old_status }} to {{ new_status }}.
+
+View the latest details here:
+{{ tracking_url }}
+
+Thanks,
+Support Team

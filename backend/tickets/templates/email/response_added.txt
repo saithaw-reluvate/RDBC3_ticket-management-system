@@ -1,0 +1,9 @@
+Hi {{ ticket.reporter_name }},
+
+There's a new response on your ticket {{ ticket.reference }} ("{{ ticket.subject }}").
+
+View it here:
+{{ tracking_url }}
+
+Thanks,
+Support Team

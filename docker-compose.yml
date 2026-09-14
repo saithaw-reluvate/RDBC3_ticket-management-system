@@ -1,6 +1,7 @@
-# Step 1 (database) minimal compose file: PostgreSQL only, so migrations and
-# tests run against the real target engine instead of SQLite. The full
-# multi-service setup (frontend, backend, mail) is added in Step 5.
+# Development-only compose file: PostgreSQL + Mailpit, so the backend can
+# run locally (venv/Gunicorn) against real dependencies instead of mocks.
+# The full multi-service setup (frontend, backend, mail as containers) is
+# added in Step 5.
 services:
   db:
     image: postgres:16-alpine
@@ -18,6 +19,13 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "8025:8025" # web UI
+      - "1025:1025" # SMTP
 
 volumes:
   pgdata:

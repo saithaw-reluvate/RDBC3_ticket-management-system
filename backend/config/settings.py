@@ -55,6 +55,32 @@ INSTALLED_APPS = [
     "tickets",
 ]
 
+# ---------------------------------------------------------------------------
+# DRF (Step 2) — one exception handler for uniform, user-safe JSON errors;
+# session auth only (no WWW-Authenticate header => DRF returns 403, not 401,
+# for both anonymous and non-staff callers on admin routes).
+# ---------------------------------------------------------------------------
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.AllowAny",
+    ],
+    "EXCEPTION_HANDLER": "tickets.exceptions.custom_exception_handler",
+    "DEFAULT_THROTTLE_RATES": {
+        "ticket_create": "5/hour",
+        "token_lookup": "120/hour",
+        "resend_link": "3/hour",
+    },
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 20,
+}
+
+# A Django CSRF failure (e.g. missing/invalid X-CSRFToken) otherwise renders
+# an HTML page — keep every error response, including this one, JSON.
+CSRF_FAILURE_VIEW = "tickets.exceptions.csrf_failure"
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -131,6 +157,17 @@ EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = _env_bool("EMAIL_USE_TLS", False)
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "support@example.com")
 
+# Used to build the tracking link embedded in outbound emails (Next.js is not
+# reachable from the backend at request time, so this is a plain setting).
+FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "http://localhost:3000")
+
+# ---------------------------------------------------------------------------
+# Ticket access tokens and attachments — env-configurable per docs/BACKEND.md.
+# ---------------------------------------------------------------------------
+TICKET_TOKEN_TTL_DAYS = int(os.environ.get("TICKET_TOKEN_TTL_DAYS", "90"))
+ATTACHMENT_MAX_BYTES = int(os.environ.get("ATTACHMENT_MAX_BYTES", str(5 * 1024 * 1024)))
+ATTACHMENT_MAX_COUNT = int(os.environ.get("ATTACHMENT_MAX_COUNT", "5"))
+
 # ---------------------------------------------------------------------------
 # Logging — persistent files for tracking errors/exceptions during backend
 # execution. logs/ is a Docker-mounted volume and gitignored.
@@ -145,6 +182,11 @@ LOGGING = {
         "verbose": {
             "format": "{asctime} {levelname} {name} {message}",
             "style": "{",
+        },
+    },
+    "filters": {
+        "redact_token_path": {
+            "()": "tickets.logging_filters.RedactTokenPathFilter",
         },
     },
     "handlers": {
@@ -178,6 +220,12 @@ LOGGING = {
             "handlers": ["console", "application_file", "error_file"],
             "level": "INFO",
             "propagate": False,
+        },
+        "django.request": {
+            "handlers": ["console", "application_file", "error_file"],
+            "level": "WARNING",
+            "propagate": False,
+            "filters": ["redact_token_path"],
         },
         "tickets": {
             "handlers": ["console", "application_file", "error_file"],

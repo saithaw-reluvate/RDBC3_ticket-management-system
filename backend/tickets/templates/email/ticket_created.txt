@@ -1,0 +1,9 @@
+Hi {{ ticket.reporter_name }},
+
+We've received your ticket "{{ ticket.subject }}" (reference {{ ticket.reference }}).
+
+You can track its status and see responses here:
+{{ tracking_url }}
+
+Thanks,
+Support Team
