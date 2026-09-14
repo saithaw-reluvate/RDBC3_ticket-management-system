@@ -1,0 +1,9 @@
+[run]
+source = tickets
+omit =
+    */migrations/*
+    */tests/*
+    manage.py
+
+[report]
+show_missing = True

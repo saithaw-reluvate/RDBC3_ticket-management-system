@@ -6,7 +6,7 @@ __pycache__/
 *.sqlite3
 
 # Django
-backend/logs/
+/logs/
 backend/media/
 backend/staticfiles/
 local_settings.py
