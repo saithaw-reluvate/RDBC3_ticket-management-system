@@ -38,7 +38,7 @@ Settled during Step 1 planning:
 | 8 | History model named **`TicketEvent`**, with structured `old_value`/`new_value` columns so status and priority changes record uniformly. |
 | 9 | Customer-visible event filtering by **code whitelist**, not a database column — one constant, one source of truth. |
 | 10 | **Database-level `CheckConstraint`s** for status/priority values, resolution consistency, and token expiry — not just Django validators. Directly serves the brief's data-integrity requirement. |
-| 11 | **Single Django app, `tickets`**, holding all five models. Cohesive at this size, avoids circular imports. |
+| 11 | **Single Django app, `tickets`**, holding all six models. Cohesive at this size, avoids circular imports. |
 | 12 | **No `factory_boy`** — plain pytest fixtures, to avoid dependency creep. |
 
 ---
@@ -195,7 +195,7 @@ backend/
 ├── requirements.txt              # django, djangorestframework, psycopg, pytest-django, coverage
 ├── config/settings.py            # env-driven, single file (Step 0 decision)
 └── tickets/
-    ├── models.py                 # the five models
+    ├── models.py                 # the six models
     ├── constants.py              # status/priority/event-type choices, customer-visible whitelist
     ├── migrations/0001_initial.py
     ├── admin.py                  # Django admin registration for manual QA
